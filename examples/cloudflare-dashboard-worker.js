@@ -305,9 +305,137 @@ function shortLocationLabel(timeZone) {
   return tail.replace(/_/g, " ").toUpperCase();
 }
 
-function renderClockBmp(timeZone, orientation, device) {
+// Short codes for the clock card, so a card URL can say ?location=HKG rather
+// than ?tz=Asia/Hong_Kong. Each entry is [IANA zone, display label]; several
+// codes share a zone deliberately, because the label is what the card shows.
+// A full IANA zone is still accepted in `location`, and `tz` keeps working.
+const CLOCK_LOCATIONS = {
+  LON: ["Europe/London", "LONDON"],
+  DUB: ["Europe/Dublin", "DUBLIN"],
+  LIS: ["Europe/Lisbon", "LISBON"],
+  MAD: ["Europe/Madrid", "MADRID"],
+  BCN: ["Europe/Madrid", "BARCELONA"],
+  PAR: ["Europe/Paris", "PARIS"],
+  AMS: ["Europe/Amsterdam", "AMSTERDAM"],
+  BRU: ["Europe/Brussels", "BRUSSELS"],
+  FRA: ["Europe/Berlin", "FRANKFURT"],
+  BER: ["Europe/Berlin", "BERLIN"],
+  MUC: ["Europe/Berlin", "MUNICH"],
+  ZRH: ["Europe/Zurich", "ZURICH"],
+  MIL: ["Europe/Rome", "MILAN"],
+  ROM: ["Europe/Rome", "ROME"],
+  VIE: ["Europe/Vienna", "VIENNA"],
+  PRG: ["Europe/Prague", "PRAGUE"],
+  WAW: ["Europe/Warsaw", "WARSAW"],
+  STO: ["Europe/Stockholm", "STOCKHOLM"],
+  OSL: ["Europe/Oslo", "OSLO"],
+  CPH: ["Europe/Copenhagen", "COPENHAGEN"],
+  HEL: ["Europe/Helsinki", "HELSINKI"],
+  ATH: ["Europe/Athens", "ATHENS"],
+  MOW: ["Europe/Moscow", "MOSCOW"],
+  IST: ["Europe/Istanbul", "ISTANBUL"],
+  NYC: ["America/New_York", "NEW YORK"],
+  BOS: ["America/New_York", "BOSTON"],
+  WAS: ["America/New_York", "WASHINGTON"],
+  MIA: ["America/New_York", "MIAMI"],
+  TOR: ["America/Toronto", "TORONTO"],
+  CHI: ["America/Chicago", "CHICAGO"],
+  DEN: ["America/Denver", "DENVER"],
+  LAX: ["America/Los_Angeles", "LOS ANGELES"],
+  SFO: ["America/Los_Angeles", "SAN FRANCISCO"],
+  SEA: ["America/Los_Angeles", "SEATTLE"],
+  YVR: ["America/Vancouver", "VANCOUVER"],
+  ANC: ["America/Anchorage", "ANCHORAGE"],
+  HNL: ["Pacific/Honolulu", "HONOLULU"],
+  MEX: ["America/Mexico_City", "MEXICO CITY"],
+  BOG: ["America/Bogota", "BOGOTA"],
+  LIM: ["America/Lima", "LIMA"],
+  SCL: ["America/Santiago", "SANTIAGO"],
+  BUE: ["America/Argentina/Buenos_Aires", "BUENOS AIRES"],
+  GRU: ["America/Sao_Paulo", "SAO PAULO"],
+  DXB: ["Asia/Dubai", "DUBAI"],
+  DOH: ["Asia/Qatar", "DOHA"],
+  RUH: ["Asia/Riyadh", "RIYADH"],
+  TLV: ["Asia/Jerusalem", "TEL AVIV"],
+  CAI: ["Africa/Cairo", "CAIRO"],
+  JNB: ["Africa/Johannesburg", "JOHANNESBURG"],
+  LOS: ["Africa/Lagos", "LAGOS"],
+  NBO: ["Africa/Nairobi", "NAIROBI"],
+  CAS: ["Africa/Casablanca", "CASABLANCA"],
+  KHI: ["Asia/Karachi", "KARACHI"],
+  DEL: ["Asia/Kolkata", "DELHI"],
+  BOM: ["Asia/Kolkata", "MUMBAI"],
+  BLR: ["Asia/Kolkata", "BANGALORE"],
+  KTM: ["Asia/Kathmandu", "KATHMANDU"],
+  DAC: ["Asia/Dhaka", "DHAKA"],
+  BKK: ["Asia/Bangkok", "BANGKOK"],
+  SGN: ["Asia/Ho_Chi_Minh", "HO CHI MINH"],
+  SIN: ["Asia/Singapore", "SINGAPORE"],
+  KUL: ["Asia/Kuala_Lumpur", "KUALA LUMPUR"],
+  JKT: ["Asia/Jakarta", "JAKARTA"],
+  MNL: ["Asia/Manila", "MANILA"],
+  HKG: ["Asia/Hong_Kong", "HONG KONG"],
+  MFM: ["Asia/Macau", "MACAU"],
+  TPE: ["Asia/Taipei", "TAIPEI"],
+  PEK: ["Asia/Shanghai", "BEIJING"],
+  SHA: ["Asia/Shanghai", "SHANGHAI"],
+  CAN: ["Asia/Shanghai", "GUANGZHOU"],
+  SEL: ["Asia/Seoul", "SEOUL"],
+  TYO: ["Asia/Tokyo", "TOKYO"],
+  OSA: ["Asia/Tokyo", "OSAKA"],
+  PER: ["Australia/Perth", "PERTH"],
+  ADL: ["Australia/Adelaide", "ADELAIDE"],
+  BNE: ["Australia/Brisbane", "BRISBANE"],
+  MEL: ["Australia/Melbourne", "MELBOURNE"],
+  SYD: ["Australia/Sydney", "SYDNEY"],
+  AKL: ["Pacific/Auckland", "AUCKLAND"],
+  SUV: ["Pacific/Fiji", "SUVA"],
+  UTC: ["UTC", "UTC"]
+};
+
+function locationsListing() {
+  return Object.keys(CLOCK_LOCATIONS)
+    .sort()
+    .map((code) => `${code.padEnd(5)}${CLOCK_LOCATIONS[code][1].padEnd(15)}${CLOCK_LOCATIONS[code][0]}`)
+    .join("\n");
+}
+
+// Resolves the clock's zone and the label drawn on the card. Returns null for
+// a code that is neither known nor a usable IANA zone, so the caller can point
+// the user at /locations.txt instead of silently showing the wrong city.
+function resolveClockLocation(url, request) {
+  const requested = url.searchParams.get("location")?.trim();
+  if (!requested || requested.toLowerCase() === "auto") {
+    const timeZone = resolveClockTimeZone(url, request);
+    return { timeZone, label: shortLocationLabel(timeZone) };
+  }
+  const known = CLOCK_LOCATIONS[requested.toUpperCase()];
+  if (known) return { timeZone: known[0], label: known[1] };
+  if (requested.includes("/") || requested.toUpperCase() === "UTC") {
+    return { timeZone: requested, label: shortLocationLabel(requested) };
+  }
+  return null;
+}
+
+// The device renders what the worker generated some seconds earlier, so a
+// to-the-minute clock is always behind by the length of the fetch. `lead`
+// moves the rendered time forward by that much, and `round` snaps it to a
+// coarser mark. Every real UTC offset is a whole number of 15 minutes, so
+// rounding against UTC lands on the same marks in every zone.
+function clockInstant(url) {
+  const lead = Math.min(600, Math.max(0, Math.floor(Number(url.searchParams.get("lead") || 0)) || 0));
+  const round = Math.min(60, Math.max(0, Math.floor(Number(url.searchParams.get("round") || 0)) || 0));
+  let ms = Date.now() + lead * 1000;
+  if (round > 0) {
+    const step = round * 60000;
+    ms = Math.round(ms / step) * step;
+  }
+  return new Date(ms);
+}
+
+function renderClockBmp(timeZone, orientation, device, label, now) {
   setCanvasDimensions(device, orientation);
-  const clock = getClockParts(new Date(), timeZone);
+  const clock = getClockParts(now || new Date(), timeZone);
   if (!clock) return null;
 
   const canvas = new Uint8Array(PIXEL_ROW_BYTES * HEIGHT);
@@ -316,13 +444,13 @@ function renderClockBmp(timeZone, orientation, device) {
     drawTextCentered(canvas, clock.time, compact ? 76 : 105, 18);
     drawTextCentered(canvas, clock.weekday, compact ? 245 : 280, 7);
     drawTextCentered(canvas, clock.date, compact ? 315 : 355, 6);
-    drawTextCentered(canvas, shortLocationLabel(timeZone), compact ? 385 : 435, 4);
+    drawTextCentered(canvas, label || shortLocationLabel(timeZone), compact ? 385 : 435, 4);
     if (clock.zoneName) drawTextCentered(canvas, clock.zoneName, compact ? 432 : 480, 3);
   } else {
     drawTextCentered(canvas, clock.time, 220, 16);
     drawTextCentered(canvas, clock.weekday, 390, 7);
     drawTextCentered(canvas, clock.date, 470, 6);
-    drawTextCentered(canvas, shortLocationLabel(timeZone), 585, 4);
+    drawTextCentered(canvas, label || shortLocationLabel(timeZone), 585, 4);
     if (clock.zoneName) drawTextCentered(canvas, clock.zoneName, 635, 4);
   }
   return makeBmp(canvas);
@@ -1283,8 +1411,13 @@ export default {
     if (url.pathname === "/") {
       return textResponse(
         "CrossPoint Dashboard Worker\n\n" +
-          "Clock:\n/clock.bmp\n/clock.bmp?tz=Europe/London\n" +
-          "/clock.bmp?tz=Australia/Sydney&device=x4&orientation=landscape\n\n" +
+          "Clock:\n/clock.bmp\n/clock.bmp?location=HKG\n/clock.bmp?location=NYC\n" +
+          "/clock.bmp?tz=Australia/Sydney&device=x4&orientation=landscape\n" +
+          "Location codes: /locations.txt (a full IANA zone also works)\n\n" +
+          "Clock, corrected for fetch time:\n" +
+          "/clock.bmp?location=LON&lead=90        render 90 s ahead\n" +
+          "/clock.bmp?location=LON&round=5        snap to the nearest 5 min\n" +
+          "/clock.bmp?location=LON&lead=90&round=5\n\n" +
           "Weather, automatic location:\n/weather.bmp\n/weather.bmp?location=auto\n\n" +
           "Weather, place name:\n/weather.bmp?location=London,GB\n" +
           "/weather.bmp?location=Sydney,AU&orientation=landscape\n\n" +
@@ -1309,9 +1442,14 @@ export default {
     const device = resolveDevice(url);
     if (!device) return textResponse("device must be x3 or x4", 400);
 
+    if (url.pathname === "/locations.txt") {
+      return textResponse("Clock location codes for /clock.bmp?location=CODE\n\n" + locationsListing() + "\n");
+    }
+
     if (url.pathname === "/clock.bmp") {
-      const timeZone = resolveClockTimeZone(url, request);
-      const bmp = renderClockBmp(timeZone, orientation, device);
+      const place = resolveClockLocation(url, request);
+      if (!place) return textResponse("Unknown location. See /locations.txt, or pass a full IANA zone.", 400);
+      const bmp = renderClockBmp(place.timeZone, orientation, device, place.label, clockInstant(url));
       if (!bmp) return textResponse("Invalid IANA time zone. Example: Europe/London", 400);
       return bmpResponse(request, bmp, "clock.bmp");
     }
