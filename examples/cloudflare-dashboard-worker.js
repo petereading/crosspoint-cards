@@ -1051,8 +1051,8 @@ function renderQuoteBmp(data, orientation, device) {
   return makeBmp(canvas);
 }
 
-async function fetchBitcoin(currency) {
-  const product = `BTC-${currency}`;
+async function fetchBitcoin() {
+  const product = "BTC-USD";
   const headers = { accept: "application/json", "user-agent": "CrossPointDashboard/1.0" };
   const [tickerResponse, candlesResponse] = await Promise.all([
     fetch(`https://api.exchange.coinbase.com/products/${product}/ticker`, { headers }),
@@ -1072,7 +1072,6 @@ async function fetchBitcoin(currency) {
   const prices = candles.slice(-7).map((row) => Number(row[4]));
   prices[prices.length - 1] = price;
   return {
-    currency,
     price,
     change,
     prices,
@@ -1114,9 +1113,9 @@ function renderBitcoinBmp(data, timeZone, orientation, device) {
   if (orientation === "landscape") {
     const compact = HEIGHT < 500;
     drawTextCentered(canvas, "BITCOIN", compact ? 10 : 14, 6);
-    drawTextCentered(canvas, `BTC / ${data.currency}`, compact ? 57 : 64, 2);
+    drawTextCentered(canvas, "BTC / USD", compact ? 57 : 64, 2);
     fillRect(canvas, 20, compact ? 83 : 91, WIDTH - 40, 3);
-    drawTextCenteredInBox(canvas, `${data.currency} ${formatWholePrice(data.price)}`, 20, 300, compact ? 132 : 146, 7);
+    drawTextCenteredInBox(canvas, `USD ${formatWholePrice(data.price)}`, 20, 300, compact ? 132 : 146, 7);
     drawTextCenteredInBox(canvas, `${direction}${data.change.toFixed(1)}% 24H`, 20, 300, compact ? 211 : 231, 4);
     drawTextCenteredInBox(canvas, `HIGH ${formatWholePrice(data.high)}`, 20, 300, compact ? 276 : 303, 2);
     drawTextCenteredInBox(canvas, `LOW ${formatWholePrice(data.low)}`, 20, 300, compact ? 306 : 335, 2);
@@ -1127,9 +1126,9 @@ function renderBitcoinBmp(data, timeZone, orientation, device) {
   }
 
   drawTextCentered(canvas, "BITCOIN", 24, 7);
-  drawTextCentered(canvas, `BTC / ${data.currency}`, 88, 3);
+  drawTextCentered(canvas, "BTC / USD", 88, 3);
   fillRect(canvas, 24, 124, WIDTH - 48, 3);
-  drawTextCentered(canvas, `${data.currency} ${formatWholePrice(data.price)}`, 166, 8, WIDTH - 30);
+  drawTextCentered(canvas, `USD ${formatWholePrice(data.price)}`, 166, 8, WIDTH - 30);
   drawTextCentered(canvas, `${direction}${data.change.toFixed(1)}% 24H`, 247, 4);
   drawTextCentered(canvas, "7 DAY PRICE", 306, 3);
   drawPriceChart(canvas, data.prices, 30, 348, WIDTH - 60, 240);
@@ -1276,7 +1275,7 @@ export default {
           "Moon phases:\n/moon.bmp\n/moon.bmp?tz=Australia/Sydney&orientation=landscape\n\n" +
           "Wikipedia Today:\n/today.bmp\n/today.bmp?lang=en&orientation=landscape\n\n" +
           "Quote of the day:\n/quote.bmp\n/quote.bmp?tz=Europe/London\n\n" +
-          "Bitcoin price and seven-day chart:\n/bitcoin.bmp\n/bitcoin.bmp?currency=GBP\n\n" +
+          "Bitcoin price and seven-day chart, in USD:\n/bitcoin.bmp\n\n" +
           "Heliocentric solar system:\n/solar.bmp\n/solar.bmp?orientation=landscape\n\n" +
           "Device defaults to X3. Use device=x3 or device=x4.\n" +
           "Orientation defaults to portrait. Use orientation=portrait or orientation=landscape.\n"
@@ -1348,16 +1347,12 @@ export default {
     }
 
     if (url.pathname === "/bitcoin.bmp") {
-      const currency = (url.searchParams.get("currency") || "GBP").trim().toUpperCase();
-      if (!new Set(["USD", "GBP", "EUR"]).has(currency)) {
-        return textResponse("currency must be USD, GBP, or EUR", 400);
-      }
       const timeZone = resolveClockTimeZone(url, request);
       if (!datePartsInZone(new Date(), timeZone)) {
         return textResponse("Invalid IANA time zone. Example: Europe/London", 400);
       }
       try {
-        const data = await fetchBitcoin(currency);
+        const data = await fetchBitcoin();
         return bmpResponse(request, renderBitcoinBmp(data, timeZone, orientation, device), "bitcoin.bmp");
       } catch (error) {
         return textResponse(error instanceof Error ? error.message : "Bitcoin generation failed", 502);
