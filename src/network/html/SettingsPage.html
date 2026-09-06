@@ -555,14 +555,31 @@
     btn.disabled = true;
     btn.textContent = 'Saving...';
 
-    // Collect only changed values
+    // Collect only changed values. An emptied number field parses to NaN,
+    // which JSON.stringify writes as null; the device reads that as 0, finds
+    // it below the setting's minimum and drops it -- silently, while still
+    // reporting success. Refuse to save instead, naming the field, so an
+    // edit is never lost without saying so.
     const changes = {};
+    const blank = [];
     allSettings.forEach(function(s) {
       const current = getValue(s);
-      if (current !== undefined && current !== originalValues[s.key]) {
+      if (current === undefined) return;
+      if ((s.type === 'value' || s.type === 'enum') && !Number.isFinite(current)) {
+        blank.push(s.name);
+        return;
+      }
+      if (current !== originalValues[s.key]) {
         changes[s.key] = current;
       }
     });
+
+    if (blank.length > 0) {
+      showMessage('Enter a number for: ' + blank.join(', '), true);
+      btn.disabled = false;
+      btn.textContent = 'Save Settings';
+      return;
+    }
 
     if (Object.keys(changes).length === 0) {
       showMessage('No changes to save.', false);
@@ -582,12 +599,11 @@
         throw new Error(text || 'Save failed');
       }
 
-      // Update original values to new values
-      for (const key in changes) {
-        originalValues[key] = changes[key];
-      }
-
       showMessage('Settings saved successfully!', false);
+      // Re-read from the device rather than trusting what was typed. Anything
+      // the device declined to apply then shows its real stored value here,
+      // instead of staying on screen as though it had been saved.
+      await loadSettings();
     } catch (e) {
       console.error(e);
       showMessage('Error: ' + e.message, true);

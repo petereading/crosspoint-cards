@@ -1231,6 +1231,10 @@ void CrossPointWebServer::handlePostSettings() {
 
   const auto& settings = getSettingsList(&sdFontSystem.registry());
   int applied = 0;
+  // Values outside a setting's range are dropped rather than clamped, which
+  // used to be invisible: the response said "applied" either way. Count them
+  // so a client can tell a partial save from a complete one.
+  int rejected = 0;
 
   for (const auto& s : settings) {
     if (!s.key) continue;
@@ -1256,6 +1260,9 @@ void CrossPointWebServer::handlePostSettings() {
             s.valueSetter(static_cast<uint8_t>(val));
           }
           applied++;
+        } else {
+          LOG_ERR("WEB", "Rejected '%s': %d out of range 0..%d", s.key, val, maxVal - 1);
+          rejected++;
         }
         break;
       }
@@ -1266,6 +1273,9 @@ void CrossPointWebServer::handlePostSettings() {
             SETTINGS.*(s.valuePtr) = static_cast<uint8_t>(val);
           }
           applied++;
+        } else {
+          LOG_ERR("WEB", "Rejected '%s': %d out of range %d..%d", s.key, val, s.valueRange.min, s.valueRange.max);
+          rejected++;
         }
         break;
       }
@@ -1288,7 +1298,13 @@ void CrossPointWebServer::handlePostSettings() {
 
   SETTINGS.saveToFile();
 
-  LOG_DBG("WEB", "Applied %d setting(s)", applied);
+  LOG_DBG("WEB", "Applied %d setting(s), rejected %d", applied, rejected);
+  if (rejected > 0) {
+    server->send(
+        200, "text/plain",
+        String("Applied ") + String(applied) + " setting(s), rejected " + String(rejected) + " out-of-range value(s)");
+    return;
+  }
   server->send(200, "text/plain", String("Applied ") + String(applied) + " setting(s)");
 }
 
