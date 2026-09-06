@@ -326,8 +326,12 @@ void RemoteImageDashboardActivity::runFetch() {
         snprintf(failureDetail, sizeof(failureDetail), "SD write failed %uB", static_cast<unsigned>(lastBytesReceived));
         break;
       case HttpDownloader::TIMED_OUT:
-        snprintf(failureDetail, sizeof(failureDetail), "timeout %uB %lus", static_cast<unsigned>(lastBytesReceived),
-                 elapsedS);
+        // Report what the server said it would send. A stall that declares a
+        // full body and delivers part of it is a truncated response; one that
+        // declares nothing arrived without a Content-Length, which is a
+        // different fault with a different fix.
+        snprintf(failureDetail, sizeof(failureDetail), "timeout %u/%uB %lus", static_cast<unsigned>(lastBytesReceived),
+                 static_cast<unsigned>(lastExpectedBytes), elapsedS);
         break;
       case HttpDownloader::ABORTED:
         snprintf(failureDetail, sizeof(failureDetail), "cancelled");
