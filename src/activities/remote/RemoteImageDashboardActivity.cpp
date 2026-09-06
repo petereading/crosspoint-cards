@@ -72,15 +72,15 @@ void RemoteImageDashboardActivity::onEnter() {
   recoverInterruptedSwap();
   cachedImageAvailable = validateImageFile(imagePath());
 
-  // When Remote Image is entered as the configured sleep screen, paint the
-  // last known-good dashboard immediately instead of replacing the reader page
-  // with a blocking "Downloading image..." screen. Wait for this first paint
-  // before starting HTTPS: otherwise its completion can satisfy the later
-  // requestUpdateAndWait() for the downloaded image and let the device sleep
-  // before that new image reaches the panel. A timer wake already has the
-  // cached dashboard retained on the e-ink panel, so avoid needlessly
-  // repainting the same image before the scheduled refresh begins.
-  if (autoRefresh && cachedImageAvailable && APP_STATE.activeDashboardMode != activeDashboardMode()) {
+  // Paint the last known-good card immediately rather than replacing whatever
+  // was on screen with a blocking "Downloading image..." message -- entered
+  // from the menu that meant staring at a message for the length of a fetch.
+  // Wait for this first paint before starting HTTPS: otherwise its completion
+  // can satisfy the later requestUpdateAndWait() for the downloaded image and
+  // let the device sleep before that new image reaches the panel. The one case
+  // that needs no paint is a timer wake, where the panel already retains the
+  // cached card.
+  if (cachedImageAvailable && (!autoRefresh || APP_STATE.activeDashboardMode != activeDashboardMode())) {
     requestUpdateAndWait();
   }
 
@@ -254,7 +254,10 @@ void RemoteImageDashboardActivity::loop() {
       return;
 
     case State::Fetching:
-      if (!autoRefresh) requestUpdateAndWait();
+      // Only paint before fetching when there is nothing worth keeping on the
+      // panel; otherwise this is a full refresh that redraws what is already
+      // displayed.
+      if (!autoRefresh && !cachedImageAvailable) requestUpdateAndWait();
       runFetch();
       return;
 
@@ -632,12 +635,15 @@ void RemoteImageDashboardActivity::render(RenderLock&&) {
   switch (state) {
     case State::Connecting:
     case State::Fetching:
-      // During unattended sleep-screen refreshes, leave the last known-good
-      // dashboard visible while WiFi and HTTPS run. Only first use (no cache)
-      // needs the explicit updating screen.
-      if (autoRefresh && (!cachedImageAvailable || !renderCachedImage())) {
+      // Leave the last known-good card visible while WiFi and HTTPS run,
+      // however this activity was entered. Replacing it with an updating
+      // screen costs a full e-ink refresh and, on a card left on display,
+      // means the panel spends most of each interval showing a message
+      // instead of the card. Only first use, with nothing cached, needs it.
+      if (cachedImageAvailable && renderCachedImage()) break;
+      if (autoRefresh) {
         renderDefaultSleepScreen();
-      } else if (!autoRefresh) {
+      } else {
         renderMessage(tr(STR_REMOTE_IMAGE_UPDATING));
       }
       break;
