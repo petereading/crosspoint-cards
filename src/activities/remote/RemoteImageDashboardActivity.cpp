@@ -451,7 +451,15 @@ HttpDownloader::DownloadError RemoteImageDashboardActivity::downloadDashboardIma
     // HttpDownloader checks this between bounded socket operations, which is
     // the only chance to notice a button during a transfer that owns the loop.
     mappedInput.update();
-    if (mappedInput.wasPressed(MappedInputManager::Button::Back)) backExitRequested = true;
+    // Sampling only happens between socket reads, so a press edge can fall
+    // entirely between two samples and be lost -- InputManager reports an edge
+    // only against the previous update(). Treat Back still being down at a
+    // sample as an exit as well, which makes holding it a reliable way out
+    // however slow the transfer is.
+    if (mappedInput.wasPressed(MappedInputManager::Button::Back) ||
+        mappedInput.isPressed(MappedInputManager::Button::Back)) {
+      backExitRequested = true;
+    }
     return backExitRequested;
   };
   const auto remainingBudget = [&]() -> unsigned long {

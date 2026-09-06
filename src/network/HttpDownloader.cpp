@@ -25,6 +25,11 @@ constexpr int HTTP_TX_BUF = 1024;
 // HTTPClient's uint16 setTimeout it doesn't silently truncate.
 constexpr int HTTP_TIMEOUT_MS = 60000;
 constexpr size_t READ_CHUNK = 2048;
+// A caller that can cancel is only polled between reads, and a read does not
+// return until it has filled its buffer. 2048 bytes on a slow link is most of
+// a second, long enough for a button tap to fall entirely between two polls,
+// so cancellable transfers read in smaller pieces to stay responsive.
+constexpr size_t CANCELLABLE_READ_CHUNK = 512;
 
 struct Sink {
   std::function<bool(const uint8_t*, size_t)> write;  // returns false to abort the transfer
@@ -147,9 +152,10 @@ HttpDownloader::DownloadError runGet(const std::string& url, const std::string& 
   // total at 0 so progress stays silent and the size check is skipped.
   sink.total = contentLength > 0 ? static_cast<size_t>(contentLength) : 0;
 
-  auto buf = makeUniqueNoThrow<char[]>(READ_CHUNK);
+  const size_t chunk = sink.cancelRequested ? CANCELLABLE_READ_CHUNK : READ_CHUNK;
+  auto buf = makeUniqueNoThrow<char[]>(chunk);
   if (!buf) {
-    LOG_ERR("HTTP", "OOM: %u byte read buffer", (unsigned)READ_CHUNK);
+    LOG_ERR("HTTP", "OOM: %u byte read buffer", (unsigned)chunk);
     esp_http_client_cleanup(client);
     return HttpDownloader::HTTP_ERROR;
   }
@@ -159,7 +165,7 @@ HttpDownloader::DownloadError runGet(const std::string& url, const std::string& 
       esp_http_client_cleanup(client);
       return stopResult;
     }
-    const int read = esp_http_client_read(client, buf.get(), READ_CHUNK);
+    const int read = esp_http_client_read(client, buf.get(), chunk);
     if (read < 0) {
       LOG_ERR("HTTP", "read error after %zu bytes", sink.downloaded);
       esp_http_client_cleanup(client);
