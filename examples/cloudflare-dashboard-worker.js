@@ -905,61 +905,6 @@ function decodeXmlText(value) {
     .trim();
 }
 
-function extractXmlTag(xml, tag) {
-  const match = String(xml).match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, "i"));
-  return match ? decodeXmlText(match[1]) : "";
-}
-
-function validateFeedUrl(value) {
-  let feedUrl;
-  try {
-    feedUrl = new URL(value);
-  } catch {
-    return null;
-  }
-  if (feedUrl.protocol !== "https:") return null;
-  const host = feedUrl.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (host === "localhost" || host.endsWith(".local") || host === "::1" || host === "0.0.0.0") return null;
-  const octets = host.split(".").map(Number);
-  if (
-    octets.length === 4 &&
-    octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255) &&
-    (octets[0] === 10 ||
-      octets[0] === 127 ||
-      (octets[0] === 169 && octets[1] === 254) ||
-      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
-      (octets[0] === 192 && octets[1] === 168))
-  ) {
-    return null;
-  }
-  return feedUrl;
-}
-
-async function fetchRss(feedUrl) {
-  const response = await fetch(feedUrl, {
-    redirect: "follow",
-    headers: {
-      accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.5",
-      "user-agent": "CrossPointDashboard/1.0",
-    },
-  });
-  if (!response.ok) throw new Error("RSS feed download failed");
-  const contentLength = Number(response.headers.get("content-length") || 0);
-  if (contentLength > 524288) throw new Error("RSS feed is too large");
-  const xml = (await response.text()).slice(0, 524289);
-  if (xml.length > 524288) throw new Error("RSS feed is too large");
-
-  const itemMatches = [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)];
-  const entryMatches = itemMatches.length ? [] : [...xml.matchAll(/<entry\b[\s\S]*?<\/entry>/gi)];
-  const blocks = (itemMatches.length ? itemMatches : entryMatches).map((match) => match[0]);
-  const items = blocks.map((block) => extractXmlTag(block, "title")).filter(Boolean).slice(0, 6);
-  if (!items.length) throw new Error("No RSS headlines found");
-
-  const beforeFirstItem = xml.slice(0, Math.max(0, xml.search(/<(?:item|entry)\b/i)) || xml.length);
-  const title = extractXmlTag(beforeFirstItem, "title") || feedUrl.hostname;
-  return { title, items };
-}
-
 function renderListBmp(kind, title, items, footer, orientation, device) {
   setCanvasDimensions(device, orientation);
   const canvas = new Uint8Array(PIXEL_ROW_BYTES * HEIGHT);
@@ -993,7 +938,7 @@ function renderListBmp(kind, title, items, footer, orientation, device) {
   drawTextCentered(canvas, title, 24, 5, WIDTH - 30);
   drawTextCentered(canvas, kind, 75, 2);
   fillRect(canvas, 24, 108, WIDTH - 48, 3);
-  const count = Math.min(items.length, kind === "RSS HEADLINES" ? 5 : 4);
+  const count = Math.min(items.length, 4);
   const areaTop = 126;
   const areaBottom = HEIGHT - 42;
   const cellHeight = Math.floor((areaBottom - areaTop) / count);
@@ -1001,7 +946,8 @@ function renderListBmp(kind, title, items, footer, orientation, device) {
     const y = areaTop + index * cellHeight;
     const kicker = cleanText(items[index].kicker || String(index + 1));
     drawText(canvas, kicker, 24, y + 14, kicker.length > 3 ? 3 : 4);
-    const textX = kind === "TODAY IN HISTORY" ? 112 : 72;
+    // Wide enough for the four-digit year kickers of the only caller.
+    const textX = 112;
     drawWrappedText(canvas, items[index].text, textX, y + 12, 2, WIDTH - textX - 22, 3, 23);
     if (index < count - 1) fillRect(canvas, 24, y + cellHeight - 2, WIDTH - 48, 1);
   }
@@ -1328,7 +1274,6 @@ export default {
           "Weather, exact coordinates:\n/weather.bmp?lat=51.5072&lon=-0.1276&label=London\n\n" +
           "Weather, imperial units:\n/weather.bmp?location=New York,US&units=imperial\n\n" +
           "Moon phases:\n/moon.bmp\n/moon.bmp?tz=Australia/Sydney&orientation=landscape\n\n" +
-          "RSS headlines (URL encode the feed value):\n/rss.bmp?feed=https%3A%2F%2Fexample.com%2Ffeed.xml\n\n" +
           "Wikipedia Today:\n/today.bmp\n/today.bmp?lang=en&orientation=landscape\n\n" +
           "Quote of the day:\n/quote.bmp\n/quote.bmp?tz=Europe/London\n\n" +
           "Bitcoin price and seven-day chart:\n/bitcoin.bmp\n/bitcoin.bmp?currency=GBP\n\n" +
@@ -1363,30 +1308,6 @@ export default {
       const phaseData = await fetchMoonPhases(now);
       const bmp = renderMoonBmp(now, timeZone, phaseData, orientation, device);
       return bmpResponse(request, bmp, "moon.bmp");
-    }
-
-    if (url.pathname === "/rss.bmp") {
-      const feedUrl = validateFeedUrl(url.searchParams.get("feed") || "");
-      if (!feedUrl) return textResponse("feed must be a public HTTPS RSS or Atom URL", 400);
-      try {
-        const feed = await fetchRss(feedUrl);
-        const override = cleanText(url.searchParams.get("title") || "");
-        const timeZone = resolveClockTimeZone(url, request);
-        const fetched = datePartsInZone(new Date(), timeZone);
-        if (!fetched) return textResponse("Invalid IANA time zone. Example: Europe/London", 400);
-        const items = feed.items.map((text, index) => ({ kicker: String(index + 1), text }));
-        const bmp = renderListBmp(
-          "RSS HEADLINES",
-          override || feed.title,
-          items,
-          `FETCHED ${fetched.time}  SOURCE ${feedUrl.hostname}`,
-          orientation,
-          device
-        );
-        return bmpResponse(request, bmp, "rss.bmp");
-      } catch (error) {
-        return textResponse(error instanceof Error ? error.message : "RSS generation failed", 502);
-      }
     }
 
     if (url.pathname === "/today.bmp") {
