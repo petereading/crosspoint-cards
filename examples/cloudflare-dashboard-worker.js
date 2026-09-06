@@ -1,3 +1,15 @@
+// Cloudflare puts no default timeout on a subrequest, so an upstream that
+// hangs -- rather than refusing or erroring -- leaves the whole response
+// pending indefinitely. A card's own error handling never runs, because
+// nothing has thrown yet, and the device sits waiting for a first byte that
+// is not being generated. Bound every upstream call so a stalled service
+// degrades to a fallback or a prompt 502 instead.
+const UPSTREAM_TIMEOUT_MS = 8000;
+
+function upstreamSignal() {
+  return AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+}
+
 // Rendering is synchronous, so these dimensions can be switched safely for
 // one card and restored by the next render without request interleaving.
 let WIDTH = 528;
@@ -677,7 +689,7 @@ async function resolvePlace(url, request) {
     const country = (url.searchParams.get("country") || "").trim().toUpperCase();
     if (/^[A-Z]{2}$/.test(country)) geocodeUrl.searchParams.set("countryCode", country);
 
-    const response = await fetch(geocodeUrl, { headers: { accept: "application/json" } });
+    const response = await fetch(geocodeUrl, { headers: { accept: "application/json" }, signal: upstreamSignal() });
     if (!response.ok) throw new Error("Location search failed");
     const data = await response.json();
     const result = data.results?.[0];
@@ -720,7 +732,7 @@ async function fetchWeather(place, imperial) {
   apiUrl.searchParams.set("timezone", "auto");
   apiUrl.searchParams.set("forecast_days", "5");
 
-  const response = await fetch(apiUrl, { headers: { accept: "application/json" } });
+  const response = await fetch(apiUrl, { headers: { accept: "application/json" }, signal: upstreamSignal() });
   if (!response.ok) throw new Error("Weather service failed");
   const data = await response.json();
   if (!data.current || !data.daily?.time?.length) throw new Error("Incomplete weather response");
@@ -816,6 +828,7 @@ async function fetchMoonPhases(now) {
   try {
     const response = await fetch(`https://aa.usno.navy.mil/api/moon/phases/date?date=${date}&nump=4`, {
       headers: { accept: "application/json", "user-agent": "CrossPointDashboard/1.0" },
+      signal: upstreamSignal(),
     });
     if (!response.ok) throw new Error("Moon service failed");
     const data = await response.json();
@@ -969,6 +982,7 @@ async function fetchWikipediaToday(language, now, timeZone) {
       accept: "application/json",
       "user-agent": "CrossPointDashboard/1.0 (https://github.com/petereading/crosspoint-dashboard-experiments)",
     },
+    signal: upstreamSignal(),
   });
   if (!response.ok) throw new Error("Wikipedia Today service failed");
   const data = await response.json();
@@ -1011,6 +1025,7 @@ async function fetchWikiquote(now, timeZone) {
       accept: "application/json",
       "user-agent": "CrossPointDashboard/1.0 (https://github.com/petereading/crosspoint-dashboard-experiments)",
     },
+    signal: upstreamSignal(),
   });
   if (!response.ok) throw new Error("Wikiquote service failed");
   const data = await response.json();
@@ -1055,8 +1070,11 @@ async function fetchBitcoin() {
   const product = "BTC-USD";
   const headers = { accept: "application/json", "user-agent": "CrossPointDashboard/1.0" };
   const [tickerResponse, candlesResponse] = await Promise.all([
-    fetch(`https://api.exchange.coinbase.com/products/${product}/ticker`, { headers }),
-    fetch(`https://api.exchange.coinbase.com/products/${product}/candles?granularity=86400`, { headers }),
+    fetch(`https://api.exchange.coinbase.com/products/${product}/ticker`, { headers, signal: upstreamSignal() }),
+    fetch(`https://api.exchange.coinbase.com/products/${product}/candles?granularity=86400`, {
+      headers,
+      signal: upstreamSignal(),
+    }),
   ]);
   if (!tickerResponse.ok || !candlesResponse.ok) throw new Error("Bitcoin price service failed");
   const ticker = await tickerResponse.json();
