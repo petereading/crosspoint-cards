@@ -43,7 +43,9 @@ class RemoteImageDashboardActivity final : public Activity {
   // on any single chunk that arrived late.
   static constexpr unsigned long FETCH_OPERATION_TIMEOUT_MS = 20000;
   static constexpr unsigned long WIFI_RETRY_TIMEOUT_MS = 5000;
-  static constexpr unsigned long DISPLAY_GRACE_INTERACTIVE_MS = 20000;
+  // A card opened from the menu that failed retries sooner than its configured
+  // interval, so a card left on screen recovers from a blip on its own.
+  static constexpr unsigned long INTERACTIVE_RETRY_MS = 60000;
 
   const uint8_t slot;
   const bool autoRefresh;
@@ -59,9 +61,15 @@ class RemoteImageDashboardActivity final : public Activity {
   bool powerInputArmed = false;
   bool powerExitRequested = false;
   bool powerInterruptAttached = false;
+  // True while this activity drove the connection itself and must therefore
+  // poll WiFi.status() to notice it come up. The interactive first entry hands
+  // that job to WifiSelectionActivity, whose callback moves the state on.
+  bool pollingWifi = false;
   unsigned long cycleStartMs = 0;
   unsigned long wifiConnectStart = 0;
-  unsigned long sleepAt = 0;
+  // When the on-screen card is next due to refresh in place. Interactive only;
+  // the unattended path sleeps between refreshes instead.
+  unsigned long nextRefreshAt = 0;
   const char* errorMessage = nullptr;
   // Why the last fetch failed, in terms that separate the three faults the
   // single "Image download failed" string used to hide: a bad HTTP status, a
@@ -78,6 +86,9 @@ class RemoteImageDashboardActivity final : public Activity {
   void runFetch();
   HttpDownloader::DownloadError downloadDashboardImage();
   bool reconnectWifiForRetry(unsigned long timeoutMs);
+  void scheduleInteractiveRefresh(bool succeeded);
+  void beginScheduledRefresh();
+  void shutdownWifiForIdle();
   void startPowerLatch();
   void stopPowerLatch();
   bool powerLatchTriggered();

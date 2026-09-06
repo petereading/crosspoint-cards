@@ -124,7 +124,7 @@ void RemoteImageDashboardActivity::promptUrl() {
                              if (urlBuffer[0] == '\0') {
                                finish();
                              } else {
-                               if (state == State::Showing) sleepAt = millis() + DISPLAY_GRACE_INTERACTIVE_MS;
+                               if (state == State::Showing) scheduleInteractiveRefresh(true);
                                requestUpdate();
                              }
                              return;
@@ -154,7 +154,7 @@ void RemoteImageDashboardActivity::promptUrl() {
 void RemoteImageDashboardActivity::beginUpdate() {
   state = State::Connecting;
   errorMessage = nullptr;
-  sleepAt = 0;
+  nextRefreshAt = 0;
 
   if (WiFi.status() == WL_CONNECTED) {
     state = State::Fetching;
@@ -194,7 +194,8 @@ void RemoteImageDashboardActivity::startDirectWifiConnect() {
     return;
   }
 
-  LOG_INF("REMOTE", "Unattended refresh: connecting to %s", cred->ssid.c_str());
+  LOG_INF("REMOTE", "Connecting to %s", cred->ssid.c_str());
+  pollingWifi = true;
   WiFi.mode(WIFI_STA);
   // The device returns to deep sleep immediately after the fetch, so modem
   // sleep saves little here and can add multi-second latency to short TLS
@@ -224,15 +225,25 @@ void RemoteImageDashboardActivity::loop() {
 
   switch (state) {
     case State::Connecting:
-      if (!autoRefresh) return;
+      if (!pollingWifi) return;
       if (WiFi.status() == WL_CONNECTED) {
+        pollingWifi = false;
         state = State::Fetching;
         return;
       }
       if (millis() - wifiConnectStart >= WIFI_TIMEOUT_MS) {
-        LOG_ERR("REMOTE", "Unattended WiFi connect timed out");
+        LOG_ERR("REMOTE", "WiFi connect timed out");
+        pollingWifi = false;
         state = State::Failed;
         errorMessage = tr(STR_DASHBOARD_WIFI_FAILED);
+        if (!autoRefresh) {
+          // Keep the card on screen and try again later instead of leaving it
+          // stuck on an error until the user intervenes.
+          shutdownWifiForIdle();
+          scheduleInteractiveRefresh(false);
+          requestUpdate();
+          return;
+        }
         requestUpdateAndWait();
         if (powerLatchTriggered()) {
           returnToUser();
@@ -268,17 +279,26 @@ void RemoteImageDashboardActivity::loop() {
     return;
   }
   if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
-    sleepAt = 0;
+    nextRefreshAt = 0;
     promptUrl();
     return;
   }
-  if (state == State::Showing && sleepAt != 0 && millis() >= sleepAt) {
-    goToSleepAndPoll();
+  // A card opened from the menu stays on screen and refreshes itself in place
+  // at its configured interval, with the radio off in between. It is meant to
+  // be left displayed, so it must not sleep or exit on its own.
+  if (nextRefreshAt != 0 && millis() >= nextRefreshAt) {
+    nextRefreshAt = 0;
+    beginScheduledRefresh();
   }
 }
 
 void RemoteImageDashboardActivity::runFetch() {
   Storage.mkdir("/.crosspoint");
+
+  // Modem sleep parks the radio between beacons, which costs multiple seconds
+  // on a short TLS transfer. The unattended path already disables it before
+  // connecting; do the same when the connection came from the network picker.
+  WiFi.setSleep(false);
 
   lastHttpStatus = 0;
   lastBytesReceived = 0;
@@ -351,8 +371,55 @@ void RemoteImageDashboardActivity::runFetch() {
       return;
     }
     goToSleepAndPoll();
-  } else if (state == State::Showing) {
-    sleepAt = millis() + DISPLAY_GRACE_INTERACTIVE_MS;
+    return;
+  }
+
+  // Interactive: drop the radio and wait out the interval on screen.
+  shutdownWifiForIdle();
+  scheduleInteractiveRefresh(state == State::Showing);
+}
+
+// Between refreshes the card is just a picture on an e-ink panel, so the radio
+// has nothing to do and is the largest current draw on the board.
+void RemoteImageDashboardActivity::shutdownWifiForIdle() {
+  pollingWifi = false;
+  if (WiFi.getMode() == WIFI_MODE_NULL) return;
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+}
+
+void RemoteImageDashboardActivity::scheduleInteractiveRefresh(bool succeeded) {
+  const unsigned long intervalMs =
+      succeeded ? std::max<unsigned long>(1u, refreshMinutes()) * 60000UL : INTERACTIVE_RETRY_MS;
+  nextRefreshAt = millis() + intervalMs;
+  // Each refresh brings WiFi and TLS up and down again inside one activity
+  // lifetime, which the unattended path avoids by sleeping instead. Log the
+  // heap so a card left on screen for hours shows whether that fragments.
+  LOG_INF("REMOTE", "Card refresh in %lu s (heap %u, largest block %u)", intervalMs / 1000UL,
+          static_cast<unsigned>(ESP.getFreeHeap()), static_cast<unsigned>(ESP.getMaxAllocHeap()));
+}
+
+// A scheduled refresh reuses the saved network directly. Going back through
+// WifiSelectionActivity would put a network picker in front of the card every
+// time its interval elapsed.
+void RemoteImageDashboardActivity::beginScheduledRefresh() {
+  state = State::Connecting;
+  errorMessage = nullptr;
+  wifiUsed = true;
+  // Deliberately no repaint here: the card already on the panel stays there
+  // while the radio comes up, rather than flashing a "Connecting" screen on
+  // every interval. E-ink would make that a full 1-2 s refresh each time.
+
+  if (WiFi.status() == WL_CONNECTED) {
+    state = State::Fetching;
+    return;
+  }
+  startDirectWifiConnect();
+  if (state == State::Failed) {
+    // No saved network to reconnect to; keep the card up and try again later.
+    shutdownWifiForIdle();
+    scheduleInteractiveRefresh(false);
+    requestUpdate();
   }
 }
 
