@@ -225,6 +225,12 @@ void RemoteImageDashboardActivity::loop() {
 
   switch (state) {
     case State::Connecting:
+      if (!autoRefresh && mappedInput.wasPressed(MappedInputManager::Button::Back)) {
+        shutdownWifiForIdle();
+        exitDashboardMode();
+        finish();
+        return;
+      }
       if (!pollingWifi) return;
       if (WiFi.status() == WL_CONNECTED) {
         pollingWifi = false;
@@ -312,6 +318,13 @@ void RemoteImageDashboardActivity::runFetch() {
   if (downloadResult == HttpDownloader::ABORTED && autoRefresh && powerLatchTriggered()) {
     LOG_INF("REMOTE", "Dashboard download cancelled by power button");
     returnToUser();
+    return;
+  }
+  if (downloadResult == HttpDownloader::ABORTED && !autoRefresh && backExitRequested) {
+    LOG_INF("REMOTE", "Back pressed during fetch; leaving the card");
+    shutdownWifiForIdle();
+    exitDashboardMode();
+    finish();
     return;
   }
   if (downloadResult != HttpDownloader::OK) {
@@ -432,7 +445,15 @@ void RemoteImageDashboardActivity::beginScheduledRefresh() {
 
 HttpDownloader::DownloadError RemoteImageDashboardActivity::downloadDashboardImage() {
   const unsigned long fetchStartedAt = millis();
-  const auto cancelled = [this]() { return autoRefresh && powerLatchTriggered(); };
+  const auto cancelled = [this]() {
+    if (autoRefresh) return powerLatchTriggered();
+    if (backExitRequested) return true;
+    // HttpDownloader checks this between bounded socket operations, which is
+    // the only chance to notice a button during a transfer that owns the loop.
+    mappedInput.update();
+    if (mappedInput.wasPressed(MappedInputManager::Button::Back)) backExitRequested = true;
+    return backExitRequested;
+  };
   const auto remainingBudget = [&]() -> unsigned long {
     const unsigned long elapsed = millis() - fetchStartedAt;
     return elapsed < FETCH_TOTAL_TIMEOUT_MS ? FETCH_TOTAL_TIMEOUT_MS - elapsed : 0;

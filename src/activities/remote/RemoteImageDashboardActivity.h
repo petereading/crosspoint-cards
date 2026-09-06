@@ -60,6 +60,10 @@ class RemoteImageDashboardActivity final : public Activity {
   bool cachedImageAvailable = false;
   bool powerInputArmed = false;
   bool powerExitRequested = false;
+  // Back pressed while a fetch was in flight. The download is synchronous and
+  // gpio.update() only runs between activity loop() calls, so a press during
+  // one is invisible unless the transfer itself polls for it.
+  bool backExitRequested = false;
   bool powerInterruptAttached = false;
   // True while this activity drove the connection itself and must therefore
   // poll WiFi.status() to notice it come up. The interactive first entry hands
