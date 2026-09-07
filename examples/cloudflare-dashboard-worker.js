@@ -308,89 +308,91 @@ function shortLocationLabel(timeZone) {
 // Short codes for the clock card, so a card URL can say ?location=HKG rather
 // than ?tz=Asia/Hong_Kong. Each entry is [IANA zone, display label]; several
 // codes share a zone deliberately, because the label is what the card shows.
+// Latitude and longitude are carried too, so the astro card can place houses
+// from a code alone without a geocoding lookup.
 // A full IANA zone is still accepted in `location`, and `tz` keeps working.
 const CLOCK_LOCATIONS = {
-  LON: ["Europe/London", "LONDON"],
-  DUB: ["Europe/Dublin", "DUBLIN"],
-  LIS: ["Europe/Lisbon", "LISBON"],
-  MAD: ["Europe/Madrid", "MADRID"],
-  BCN: ["Europe/Madrid", "BARCELONA"],
-  PAR: ["Europe/Paris", "PARIS"],
-  AMS: ["Europe/Amsterdam", "AMSTERDAM"],
-  BRU: ["Europe/Brussels", "BRUSSELS"],
-  FRA: ["Europe/Berlin", "FRANKFURT"],
-  BER: ["Europe/Berlin", "BERLIN"],
-  MUC: ["Europe/Berlin", "MUNICH"],
-  ZRH: ["Europe/Zurich", "ZURICH"],
-  MIL: ["Europe/Rome", "MILAN"],
-  ROM: ["Europe/Rome", "ROME"],
-  VIE: ["Europe/Vienna", "VIENNA"],
-  PRG: ["Europe/Prague", "PRAGUE"],
-  WAW: ["Europe/Warsaw", "WARSAW"],
-  STO: ["Europe/Stockholm", "STOCKHOLM"],
-  OSL: ["Europe/Oslo", "OSLO"],
-  CPH: ["Europe/Copenhagen", "COPENHAGEN"],
-  HEL: ["Europe/Helsinki", "HELSINKI"],
-  ATH: ["Europe/Athens", "ATHENS"],
-  MOW: ["Europe/Moscow", "MOSCOW"],
-  IST: ["Europe/Istanbul", "ISTANBUL"],
-  NYC: ["America/New_York", "NEW YORK"],
-  BOS: ["America/New_York", "BOSTON"],
-  WAS: ["America/New_York", "WASHINGTON"],
-  MIA: ["America/New_York", "MIAMI"],
-  TOR: ["America/Toronto", "TORONTO"],
-  CHI: ["America/Chicago", "CHICAGO"],
-  DEN: ["America/Denver", "DENVER"],
-  LAX: ["America/Los_Angeles", "LOS ANGELES"],
-  SFO: ["America/Los_Angeles", "SAN FRANCISCO"],
-  SEA: ["America/Los_Angeles", "SEATTLE"],
-  YVR: ["America/Vancouver", "VANCOUVER"],
-  ANC: ["America/Anchorage", "ANCHORAGE"],
-  HNL: ["Pacific/Honolulu", "HONOLULU"],
-  MEX: ["America/Mexico_City", "MEXICO CITY"],
-  BOG: ["America/Bogota", "BOGOTA"],
-  LIM: ["America/Lima", "LIMA"],
-  SCL: ["America/Santiago", "SANTIAGO"],
-  BUE: ["America/Argentina/Buenos_Aires", "BUENOS AIRES"],
-  GRU: ["America/Sao_Paulo", "SAO PAULO"],
-  DXB: ["Asia/Dubai", "DUBAI"],
-  DOH: ["Asia/Qatar", "DOHA"],
-  RUH: ["Asia/Riyadh", "RIYADH"],
-  TLV: ["Asia/Jerusalem", "TEL AVIV"],
-  CAI: ["Africa/Cairo", "CAIRO"],
-  JNB: ["Africa/Johannesburg", "JOHANNESBURG"],
-  LOS: ["Africa/Lagos", "LAGOS"],
-  NBO: ["Africa/Nairobi", "NAIROBI"],
-  CAS: ["Africa/Casablanca", "CASABLANCA"],
-  KHI: ["Asia/Karachi", "KARACHI"],
-  DEL: ["Asia/Kolkata", "DELHI"],
-  BOM: ["Asia/Kolkata", "MUMBAI"],
-  BLR: ["Asia/Kolkata", "BANGALORE"],
-  KTM: ["Asia/Kathmandu", "KATHMANDU"],
-  DAC: ["Asia/Dhaka", "DHAKA"],
-  BKK: ["Asia/Bangkok", "BANGKOK"],
-  SGN: ["Asia/Ho_Chi_Minh", "HO CHI MINH"],
-  SIN: ["Asia/Singapore", "SINGAPORE"],
-  KUL: ["Asia/Kuala_Lumpur", "KUALA LUMPUR"],
-  JKT: ["Asia/Jakarta", "JAKARTA"],
-  MNL: ["Asia/Manila", "MANILA"],
-  HKG: ["Asia/Hong_Kong", "HONG KONG"],
-  MFM: ["Asia/Macau", "MACAU"],
-  TPE: ["Asia/Taipei", "TAIPEI"],
-  PEK: ["Asia/Shanghai", "BEIJING"],
-  SHA: ["Asia/Shanghai", "SHANGHAI"],
-  CAN: ["Asia/Shanghai", "GUANGZHOU"],
-  SEL: ["Asia/Seoul", "SEOUL"],
-  TYO: ["Asia/Tokyo", "TOKYO"],
-  OSA: ["Asia/Tokyo", "OSAKA"],
-  PER: ["Australia/Perth", "PERTH"],
-  ADL: ["Australia/Adelaide", "ADELAIDE"],
-  BNE: ["Australia/Brisbane", "BRISBANE"],
-  MEL: ["Australia/Melbourne", "MELBOURNE"],
-  SYD: ["Australia/Sydney", "SYDNEY"],
-  AKL: ["Pacific/Auckland", "AUCKLAND"],
-  SUV: ["Pacific/Fiji", "SUVA"],
-  UTC: ["UTC", "UTC"]
+  LON: ["Europe/London", "LONDON", 51.51, -0.13],
+  DUB: ["Europe/Dublin", "DUBLIN", 53.35, -6.26],
+  LIS: ["Europe/Lisbon", "LISBON", 38.72, -9.14],
+  MAD: ["Europe/Madrid", "MADRID", 40.42, -3.7],
+  BCN: ["Europe/Madrid", "BARCELONA", 41.39, 2.17],
+  PAR: ["Europe/Paris", "PARIS", 48.86, 2.35],
+  AMS: ["Europe/Amsterdam", "AMSTERDAM", 52.37, 4.9],
+  BRU: ["Europe/Brussels", "BRUSSELS", 50.85, 4.35],
+  FRA: ["Europe/Berlin", "FRANKFURT", 50.11, 8.68],
+  BER: ["Europe/Berlin", "BERLIN", 52.52, 13.4],
+  MUC: ["Europe/Berlin", "MUNICH", 48.14, 11.58],
+  ZRH: ["Europe/Zurich", "ZURICH", 47.38, 8.54],
+  MIL: ["Europe/Rome", "MILAN", 45.46, 9.19],
+  ROM: ["Europe/Rome", "ROME", 41.9, 12.5],
+  VIE: ["Europe/Vienna", "VIENNA", 48.21, 16.37],
+  PRG: ["Europe/Prague", "PRAGUE", 50.08, 14.44],
+  WAW: ["Europe/Warsaw", "WARSAW", 52.23, 21.01],
+  STO: ["Europe/Stockholm", "STOCKHOLM", 59.33, 18.07],
+  OSL: ["Europe/Oslo", "OSLO", 59.91, 10.75],
+  CPH: ["Europe/Copenhagen", "COPENHAGEN", 55.68, 12.57],
+  HEL: ["Europe/Helsinki", "HELSINKI", 60.17, 24.94],
+  ATH: ["Europe/Athens", "ATHENS", 37.98, 23.73],
+  MOW: ["Europe/Moscow", "MOSCOW", 55.76, 37.62],
+  IST: ["Europe/Istanbul", "ISTANBUL", 41.01, 28.98],
+  NYC: ["America/New_York", "NEW YORK", 40.71, -74.01],
+  BOS: ["America/New_York", "BOSTON", 42.36, -71.06],
+  WAS: ["America/New_York", "WASHINGTON", 38.91, -77.04],
+  MIA: ["America/New_York", "MIAMI", 25.76, -80.19],
+  TOR: ["America/Toronto", "TORONTO", 43.65, -79.38],
+  CHI: ["America/Chicago", "CHICAGO", 41.88, -87.63],
+  DEN: ["America/Denver", "DENVER", 39.74, -104.99],
+  LAX: ["America/Los_Angeles", "LOS ANGELES", 34.05, -118.24],
+  SFO: ["America/Los_Angeles", "SAN FRANCISCO", 37.77, -122.42],
+  SEA: ["America/Los_Angeles", "SEATTLE", 47.61, -122.33],
+  YVR: ["America/Vancouver", "VANCOUVER", 49.28, -123.12],
+  ANC: ["America/Anchorage", "ANCHORAGE", 61.22, -149.9],
+  HNL: ["Pacific/Honolulu", "HONOLULU", 21.31, -157.86],
+  MEX: ["America/Mexico_City", "MEXICO CITY", 19.43, -99.13],
+  BOG: ["America/Bogota", "BOGOTA", 4.71, -74.07],
+  LIM: ["America/Lima", "LIMA", -12.05, -77.04],
+  SCL: ["America/Santiago", "SANTIAGO", -33.45, -70.67],
+  BUE: ["America/Argentina/Buenos_Aires", "BUENOS AIRES", -34.6, -58.38],
+  GRU: ["America/Sao_Paulo", "SAO PAULO", -23.55, -46.63],
+  DXB: ["Asia/Dubai", "DUBAI", 25.2, 55.27],
+  DOH: ["Asia/Qatar", "DOHA", 25.29, 51.53],
+  RUH: ["Asia/Riyadh", "RIYADH", 24.71, 46.68],
+  TLV: ["Asia/Jerusalem", "TEL AVIV", 32.08, 34.78],
+  CAI: ["Africa/Cairo", "CAIRO", 30.04, 31.24],
+  JNB: ["Africa/Johannesburg", "JOHANNESBURG", -26.2, 28.05],
+  LOS: ["Africa/Lagos", "LAGOS", 6.52, 3.38],
+  NBO: ["Africa/Nairobi", "NAIROBI", -1.29, 36.82],
+  CAS: ["Africa/Casablanca", "CASABLANCA", 33.57, -7.59],
+  KHI: ["Asia/Karachi", "KARACHI", 24.86, 67.01],
+  DEL: ["Asia/Kolkata", "DELHI", 28.61, 77.21],
+  BOM: ["Asia/Kolkata", "MUMBAI", 19.08, 72.88],
+  BLR: ["Asia/Kolkata", "BANGALORE", 12.97, 77.59],
+  KTM: ["Asia/Kathmandu", "KATHMANDU", 27.72, 85.32],
+  DAC: ["Asia/Dhaka", "DHAKA", 23.81, 90.41],
+  BKK: ["Asia/Bangkok", "BANGKOK", 13.76, 100.5],
+  SGN: ["Asia/Ho_Chi_Minh", "HO CHI MINH", 10.82, 106.63],
+  SIN: ["Asia/Singapore", "SINGAPORE", 1.35, 103.82],
+  KUL: ["Asia/Kuala_Lumpur", "KUALA LUMPUR", 3.14, 101.69],
+  JKT: ["Asia/Jakarta", "JAKARTA", -6.21, 106.85],
+  MNL: ["Asia/Manila", "MANILA", 14.6, 120.98],
+  HKG: ["Asia/Hong_Kong", "HONG KONG", 22.32, 114.17],
+  MFM: ["Asia/Macau", "MACAU", 22.2, 113.54],
+  TPE: ["Asia/Taipei", "TAIPEI", 25.03, 121.57],
+  PEK: ["Asia/Shanghai", "BEIJING", 39.9, 116.41],
+  SHA: ["Asia/Shanghai", "SHANGHAI", 31.23, 121.47],
+  CAN: ["Asia/Shanghai", "GUANGZHOU", 23.13, 113.26],
+  SEL: ["Asia/Seoul", "SEOUL", 37.57, 126.98],
+  TYO: ["Asia/Tokyo", "TOKYO", 35.68, 139.65],
+  OSA: ["Asia/Tokyo", "OSAKA", 34.69, 135.5],
+  PER: ["Australia/Perth", "PERTH", -31.95, 115.86],
+  ADL: ["Australia/Adelaide", "ADELAIDE", -34.93, 138.6],
+  BNE: ["Australia/Brisbane", "BRISBANE", -27.47, 153.03],
+  MEL: ["Australia/Melbourne", "MELBOURNE", -37.81, 144.96],
+  SYD: ["Australia/Sydney", "SYDNEY", -33.87, 151.21],
+  AKL: ["Pacific/Auckland", "AUCKLAND", -36.85, 174.76],
+  SUV: ["Pacific/Fiji", "SUVA", -18.14, 178.44],
+  UTC: ["UTC", "UTC", 0.0, 0.0]
 };
 
 function locationsListing() {
@@ -1292,6 +1294,9 @@ const PLANET_ELEMENTS = [
   ["SA", 9.54149883, -0.00003065, 0.05550825, -0.00032044, 2.49424102, 0.00451969, 50.07571329, 1222.11494724, 92.86136063, 0.54179478, 113.63998702, -0.25015002, 0.00025899, -0.13434469, 0.87320147, 38.35125],
   ["UR", 19.18797948, -0.00020455, 0.04685740, -0.00001550, 0.77298127, -0.00180155, 314.20276625, 428.49512595, 172.43404441, 0.09266985, 73.96250215, 0.05739699, 0.00058331, -0.97731848, 0.17689245, 7.67025],
   ["NE", 30.06952752, 0.00006447, 0.00895439, 0.00000818, 1.77005520, 0.00022400, 304.22289287, 218.46515314, 46.68158724, 0.01009938, 131.78635853, -0.00606302, -0.00041348, 0.68346318, -0.10162547, 7.67025],
+  // Pluto is not a planet for the solar card's purposes but a chart is expected
+  // to carry it. Same JPL approximate-element set, valid 1800-2050.
+  ["PL", 39.48686035, 0.00449751, 0.24885238, 0.00006016, 17.14104260, 0.00000501, 238.96535011, 145.18042903, 224.09702598, -0.00968827, 110.30167986, -0.00809981, -0.01262724, 0, 0, 0],
 ];
 
 function planetPositions(now) {
@@ -1404,6 +1409,389 @@ function bmpResponse(request, bmp, filename) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Astro chart. Everything here is computed from first principles: the planets
+// reuse the JPL Keplerian elements the solar card already carries, the Moon
+// uses a truncated ELP series, and the houses come from local sidereal time.
+// No upstream service is involved, which is deliberate -- a chart that depends
+// on someone else's API is a card that fails when their API does.
+// ---------------------------------------------------------------------------
+
+const ZODIAC = ["AR", "TA", "GE", "CN", "LE", "VI", "LI", "SC", "SG", "CP", "AQ", "PI"];
+const DEG = Math.PI / 180;
+
+function norm360(d) {
+  return ((d % 360) + 360) % 360;
+}
+
+function julianCenturies(date) {
+  return (2440587.5 + date.getTime() / 86400000 - 2451545.0) / 36525;
+}
+
+function obliquity(T) {
+  return 23.439291 - 0.0130042 * T - 1.64e-7 * T * T + 5.04e-7 * T * T * T;
+}
+
+// Meeus, Astronomical Algorithms ch. 47, main longitude terms. Truncated to the
+// terms above ~0.001 degrees, which is far finer than a chart can show.
+const MOON_TERMS = [
+  [0, 0, 1, 0, 6288774], [2, 0, -1, 0, 1274027], [2, 0, 0, 0, 658314], [0, 0, 2, 0, 213618],
+  [0, 1, 0, 0, -185116], [0, 0, 0, 2, -114332], [2, 0, -2, 0, 58793], [2, -1, -1, 0, 57066],
+  [2, 0, 1, 0, 53322], [2, -1, 0, 0, 45758], [0, 1, -1, 0, -40923], [1, 0, 0, 0, -34720],
+  [0, 1, 1, 0, -30383], [2, 0, 0, -2, 15327], [0, 0, 1, 2, -12528], [0, 0, 1, -2, 10980],
+  [4, 0, -1, 0, 10675], [0, 0, 3, 0, 10034], [4, 0, -2, 0, 8548], [2, 1, -1, 0, -7888],
+  [2, 1, 0, 0, -6766], [1, 0, -1, 0, -5163], [1, 1, 0, 0, 4987], [2, -1, 1, 0, 4036],
+  [2, 0, 2, 0, 3994], [4, 0, 0, 0, 3861], [2, 0, -3, 0, 3665],
+];
+
+function moonLongitude(T) {
+  const Lp = 218.3164477 + 481267.88123421 * T - 0.0015786 * T * T + (T * T * T) / 538841;
+  const D = 297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + (T * T * T) / 545868;
+  const M = 357.5291092 + 35999.0502909 * T - 0.0001536 * T * T;
+  const Mp = 134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + (T * T * T) / 69699;
+  const F = 93.272095 + 483202.0175233 * T - 0.0036539 * T * T;
+  // Terms involving the Sun's anomaly shrink as Earth's eccentricity does.
+  const E = 1 - 0.002516 * T - 0.0000074 * T * T;
+
+  let sum = 0;
+  for (const [cd, cm, cmp, cf, coeff] of MOON_TERMS) {
+    const arg = (cd * D + cm * M + cmp * Mp + cf * F) * DEG;
+    const scale = cm === 0 ? 1 : Math.abs(cm) === 1 ? E : E * E;
+    sum += coeff * scale * Math.sin(arg);
+  }
+  return norm360(Lp + sum / 1000000);
+}
+
+// Geocentric ecliptic longitude of each body. Longitude needs only the x and y
+// of the difference vector, so the ecliptic-plane coordinates planetPositions()
+// already returns are sufficient; the dropped z affects latitude alone.
+function chartBodies(now) {
+  const T = julianCenturies(now);
+  const planets = planetPositions(now);
+  const earth = planets.find((p) => p.name === "EA");
+  // The JPL elements are referred to the J2000 equinox, but a tropical chart is
+  // measured from the equinox of date, so the planets need general precession
+  // added: about 0.36 degrees by 2026, which is a third of a zodiac degree and
+  // plainly visible on a chart. The Moon series above already gives longitude
+  // of date, so it must not be corrected again.
+  const precession = (5029.0966 * T + 1.11113 * T * T) / 3600;
+  const bodies = [
+    { name: "SU", longitude: norm360((Math.atan2(-earth.y, -earth.x) * 180) / Math.PI + precession) },
+    { name: "MO", longitude: moonLongitude(T) },
+  ];
+  for (const p of planets) {
+    if (p.name === "EA") continue;
+    bodies.push({
+      name: p.name,
+      longitude: norm360((Math.atan2(p.y - earth.y, p.x - earth.x) * 180) / Math.PI + precession),
+    });
+  }
+  return bodies;
+}
+
+function localSiderealTime(now, longitudeEast) {
+  const jd = 2440587.5 + now.getTime() / 86400000;
+  const T = (jd - 2451545.0) / 36525;
+  const gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T;
+  return norm360(gmst + longitudeEast);
+}
+
+function eclipticFromRightAscension(ra, eps) {
+  return norm360((Math.atan2(Math.sin(ra * DEG), Math.cos(ra * DEG) * Math.cos(eps * DEG)) * 180) / Math.PI);
+}
+
+function ascendantLongitude(ramc, eps, lat) {
+  const asc =
+    (Math.atan2(
+      Math.cos(ramc * DEG),
+      -(Math.sin(ramc * DEG) * Math.cos(eps * DEG) + Math.tan(lat * DEG) * Math.sin(eps * DEG))
+    ) *
+      180) /
+    Math.PI;
+  return norm360(asc);
+}
+
+// Placidus divides each body's diurnal semi-arc into three. The cusp longitude
+// appears on both sides of the equation, so it is solved by iteration. Above
+// the polar circle the semi-arc does not exist and the system is genuinely
+// undefined -- return null rather than a plausible-looking wrong number.
+function placidusCusp(ramc, eps, lat, offset, fraction) {
+  let lon = eclipticFromRightAscension(ramc + offset, eps);
+  for (let i = 0; i < 40; i++) {
+    const decl = Math.asin(Math.sin(eps * DEG) * Math.sin(lon * DEG));
+    const t = Math.tan(lat * DEG) * Math.tan(decl);
+    if (Math.abs(t) >= 1) return null;
+    const ad = (Math.asin(t) * 180) / Math.PI;
+    const ra = offset < 180 ? ramc + offset + fraction * ad : ramc + offset - fraction * ad;
+    const next = eclipticFromRightAscension(ra, eps);
+    if (Math.abs(next - lon) < 1e-9) return next;
+    lon = next;
+  }
+  return lon;
+}
+
+function houseCusps(system, ramc, eps, lat, asc, mc) {
+  const cusps = new Array(12);
+  if (system === "whole") {
+    const start = Math.floor(asc / 30) * 30;
+    for (let i = 0; i < 12; i++) cusps[i] = norm360(start + i * 30);
+    return { cusps, system: "WHOLE SIGN" };
+  }
+  if (system === "equal") {
+    for (let i = 0; i < 12; i++) cusps[i] = norm360(asc + i * 30);
+    return { cusps, system: "EQUAL" };
+  }
+
+  const c11 = placidusCusp(ramc, eps, lat, 30, 1 / 3);
+  const c12 = placidusCusp(ramc, eps, lat, 60, 2 / 3);
+  const c2 = placidusCusp(ramc, eps, lat, 120, 2 / 3);
+  const c3 = placidusCusp(ramc, eps, lat, 150, 1 / 3);
+  if (c11 === null || c12 === null || c2 === null || c3 === null) {
+    // Inside the polar circle: fall back rather than fail the whole card.
+    for (let i = 0; i < 12; i++) cusps[i] = norm360(asc + i * 30);
+    return { cusps, system: "EQUAL (PLACIDUS UNDEFINED HERE)" };
+  }
+  cusps[0] = asc;
+  cusps[1] = c2;
+  cusps[2] = c3;
+  cusps[3] = norm360(mc + 180);
+  cusps[4] = norm360(c11 + 180);
+  cusps[5] = norm360(c12 + 180);
+  cusps[6] = norm360(asc + 180);
+  cusps[7] = norm360(c2 + 180);
+  cusps[8] = norm360(c3 + 180);
+  cusps[9] = mc;
+  cusps[10] = c11;
+  cusps[11] = c12;
+  return { cusps, system: "PLACIDUS" };
+}
+
+function houseOf(longitude, cusps) {
+  for (let i = 0; i < 12; i++) {
+    const start = cusps[i];
+    const end = cusps[(i + 1) % 12];
+    const span = norm360(end - start);
+    if (norm360(longitude - start) < span) return i + 1;
+  }
+  return 1;
+}
+
+const ASPECTS = [
+  ["CON", 0], ["SEX", 60], ["SQR", 90], ["TRI", 120], ["OPP", 180],
+];
+
+function chartAspects(bodies, orb) {
+  const found = [];
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      let sep = norm360(bodies[i].longitude - bodies[j].longitude);
+      if (sep > 180) sep = 360 - sep;
+      for (const [name, angle] of ASPECTS) {
+        const delta = Math.abs(sep - angle);
+        if (delta <= orb) {
+          found.push({ a: i, b: j, name, delta });
+          break;
+        }
+      }
+    }
+  }
+  return found;
+}
+
+function formatPosition(longitude) {
+  const sign = Math.floor(norm360(longitude) / 30);
+  const within = norm360(longitude) - sign * 30;
+  const degrees = Math.floor(within);
+  const minutes = Math.floor((within - degrees) * 60);
+  return `${String(degrees).padStart(2, "0")}${ZODIAC[sign]}${String(minutes).padStart(2, "0")}`;
+}
+
+function renderAstroBmp(chart, orientation, device) {
+  setCanvasDimensions(device, orientation);
+  const canvas = new Uint8Array(PIXEL_ROW_BYTES * HEIGHT);
+  const landscape = orientation === "landscape";
+
+  const cx = landscape ? Math.floor(HEIGHT / 2) + 10 : Math.floor(WIDTH / 2);
+  const cy = landscape ? Math.floor(HEIGHT / 2) + 20 : 372;
+  const outer = landscape ? Math.floor(HEIGHT / 2) - 40 : 232;
+  const signInner = Math.round(outer * 0.84);
+  const houseInner = Math.round(outer * 0.62);
+  const bodyRadius = Math.round(outer * 0.73);
+
+  drawTextCentered(canvas, "ASTRO CHART", landscape ? 10 : 20, landscape ? 3 : 4);
+  drawTextCentered(canvas, chart.label, landscape ? 44 : 62, landscape ? 3 : 4);
+  drawTextCentered(canvas, chart.stamp, landscape ? 72 : 92, 2);
+
+  // Ascendant on the left with longitude increasing counter-clockwise, which
+  // puts the IC at the bottom and the MC at the top -- the conventional
+  // layout. Screen y grows downwards, hence the subtraction in py().
+  const screenAngle = (longitude) => (180 + norm360(longitude - chart.asc)) * DEG;
+  const px = (longitude, r) => Math.round(cx + r * Math.cos(screenAngle(longitude)));
+  const py = (longitude, r) => Math.round(cy - r * Math.sin(screenAngle(longitude)));
+
+  drawCircleOutline(canvas, cx, cy, outer);
+  drawCircleOutline(canvas, cx, cy, signInner);
+  drawCircleOutline(canvas, cx, cy, houseInner);
+
+  // Sign ring: 12 spokes on the 30 degree boundaries, each segment labelled.
+  for (let s = 0; s < 12; s++) {
+    const boundary = s * 30;
+    drawLine(canvas, px(boundary, signInner), py(boundary, signInner), px(boundary, outer), py(boundary, outer));
+    const mid = boundary + 15;
+    const r = Math.round((signInner + outer) / 2);
+    drawText(canvas, ZODIAC[s], px(mid, r) - 5, py(mid, r) - 3, 2);
+  }
+
+  // House cusps, numbered just inside the ring.
+  for (let h = 0; h < 12; h++) {
+    const cusp = chart.cusps[h];
+    const thickness = h === 0 || h === 9 ? 2 : 1;
+    drawLine(canvas, px(cusp, houseInner), py(cusp, houseInner), px(cusp, signInner), py(cusp, signInner), thickness);
+    const mid = cusp + norm360(chart.cusps[(h + 1) % 12] - cusp) / 2;
+    const r = houseInner + 12;
+    drawText(canvas, String(h + 1), px(mid, r) - 3, py(mid, r) - 3, 1);
+  }
+
+  // Angles.
+  drawText(canvas, "ASC", px(chart.asc, outer - 12) - 2, py(chart.asc, outer - 12) - 3, 1);
+  drawText(canvas, "MC", px(chart.mc, outer - 12) - 6, py(chart.mc, outer - 12) - 2, 1);
+
+  // Aspect lines inside the inner circle.
+  for (const aspect of chart.aspects) {
+    const a = chart.bodies[aspect.a].longitude;
+    const b = chart.bodies[aspect.b].longitude;
+    drawLine(canvas, px(a, houseInner), py(a, houseInner), px(b, houseInner), py(b, houseInner));
+  }
+
+  // Bodies. Two planets a few degrees apart would otherwise be drawn on the
+  // same pixels, so step each crowded one further in than the last.
+  const ordered = [...chart.bodies].sort((a, b) => a.longitude - b.longitude);
+  let previous = null;
+  let ring = 0;
+  for (const body of ordered) {
+    if (previous !== null && norm360(body.longitude - previous) < 13) {
+      ring = (ring + 1) % 3;
+    } else {
+      ring = 0;
+    }
+    previous = body.longitude;
+    const r = bodyRadius - ring * 24;
+    const x = px(body.longitude, r);
+    const y = py(body.longitude, r);
+    fillRect(canvas, x - 10, y - 6, 20, 12, false);
+    drawText(canvas, body.name, x - 9, y - 5, 2);
+  }
+
+  // Positions table.
+  const rows = chart.bodies.map((b) => `${b.name} ${formatPosition(b.longitude)} H${chart.houses[b.name]}`);
+  if (landscape) {
+    let y = 100;
+    for (const row of rows) {
+      drawText(canvas, row, WIDTH - 150, y, 2);
+      y += 26;
+    }
+    drawText(canvas, chart.system, WIDTH - 150, y + 8, 1);
+  } else {
+    const top = cy + outer + 20;
+    for (let i = 0; i < rows.length; i++) {
+      const column = i % 2;
+      const row = Math.floor(i / 2);
+      drawText(canvas, rows[i], 40 + column * 250, top + row * 26, 2);
+    }
+    drawTextCentered(canvas, `${chart.system}  ORB ${chart.orb} DEG`, HEIGHT - 24, 1);
+  }
+  return makeBmp(canvas);
+}
+
+// Wall-clock time in an arbitrary zone, without a date library: format the
+// guess in that zone, see how far off it lands, and correct. Two passes settle
+// it either side of a DST boundary.
+function zoneOffsetMs(ms, timeZone) {
+  const dtf = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  });
+  const p = {};
+  for (const part of dtf.formatToParts(new Date(ms))) if (part.type !== "literal") p[part.type] = part.value;
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
+}
+
+function instantFromLocal(y, mo, d, h, mi, timeZone) {
+  const naive = Date.UTC(y, mo - 1, d, h, mi);
+  let ms = naive;
+  for (let i = 0; i < 2; i++) ms = naive - zoneOffsetMs(ms, timeZone);
+  return new Date(ms);
+}
+
+function buildChart(url, place) {
+  const timeZone = place.timeZone;
+  let when = new Date();
+  const dateArg = url.searchParams.get("date");
+  const timeArg = url.searchParams.get("time");
+  if (dateArg) {
+    const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateArg.trim());
+    if (!dm) return { error: "date must be YYYY-MM-DD" };
+    const tm = /^(\d{1,2}):(\d{2})$/.exec((timeArg || "12:00").trim());
+    if (!tm) return { error: "time must be HH:MM" };
+    when = instantFromLocal(+dm[1], +dm[2], +dm[3], +tm[1], +tm[2], timeZone);
+    if (Number.isNaN(when.getTime())) return { error: "Invalid date or time" };
+  }
+
+  const system = (url.searchParams.get("houses") || "placidus").trim().toLowerCase();
+  if (!["placidus", "whole", "equal"].includes(system)) {
+    return { error: "houses must be placidus, whole, or equal" };
+  }
+  const orb = Math.min(12, Math.max(1, Math.floor(Number(url.searchParams.get("orb") || 6)) || 6));
+
+  const T = julianCenturies(when);
+  const eps = obliquity(T);
+  const ramc = localSiderealTime(when, place.lon);
+  const mc = eclipticFromRightAscension(ramc, eps);
+  const asc = ascendantLongitude(ramc, eps, place.lat);
+  const { cusps, system: systemLabel } = houseCusps(system, ramc, eps, place.lat, asc, mc);
+
+  const bodies = chartBodies(when);
+  const houses = {};
+  for (const b of bodies) houses[b.name] = houseOf(b.longitude, cusps);
+
+  const local = datePartsInZone(when, timeZone);
+  return {
+    label: place.label,
+    stamp: local ? `${local.date || ""} ${local.time}`.trim() : when.toISOString().slice(0, 16).replace("T", " "),
+    asc, mc, cusps, bodies, houses, orb,
+    system: systemLabel,
+    aspects: chartAspects(bodies, orb),
+  };
+}
+
+// The chart needs a position, not just a zone. A code brings its own; explicit
+// lat/lon overrides it, so anywhere can be charted without adding a code.
+function resolveChartPlace(url, request) {
+  const latArg = url.searchParams.get("lat");
+  const lonArg = url.searchParams.get("lon");
+  if (latArg !== null || lonArg !== null) {
+    const lat = Number(latArg);
+    const lon = Number(lonArg);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    const timeZone = url.searchParams.get("tz")?.trim() || request.cf?.timezone || "UTC";
+    const label = cleanText(url.searchParams.get("label") || "") || shortLocationLabel(timeZone);
+    return { timeZone, label, lat, lon };
+  }
+  const requested = url.searchParams.get("location")?.trim();
+  if (!requested || requested.toLowerCase() === "auto") {
+    const lat = Number(request.cf?.latitude);
+    const lon = Number(request.cf?.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    const timeZone = request.cf?.timezone || "UTC";
+    return { timeZone, label: cleanText(request.cf?.city || shortLocationLabel(timeZone)), lat, lon };
+  }
+  const known = CLOCK_LOCATIONS[requested.toUpperCase()];
+  if (!known) return null;
+  return { timeZone: known[0], label: known[1], lat: known[2], lon: known[3] };
+}
+
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -1428,6 +1816,10 @@ export default {
           "Quote of the day:\n/quote.bmp\n/quote.bmp?tz=Europe/London\n\n" +
           "Bitcoin price and seven-day chart, in USD:\n/bitcoin.bmp\n\n" +
           "Heliocentric solar system:\n/solar.bmp\n/solar.bmp?orientation=landscape\n\n" +
+          "Astro chart, now:\n/astro.bmp?location=HKG\n/astro.bmp?lat=22.32&lon=114.17&tz=Asia/Hong_Kong\n" +
+          "  houses=placidus (default) | whole | equal\n" +
+          "  orb=6 (1-12, aspect orb in degrees)\n" +
+          "Astro chart, a given moment:\n/astro.bmp?location=LON&date=1985-07-13&time=14:20\n\n" +
           "Device defaults to X3. Use device=x3 or device=x4.\n" +
           "Orientation defaults to portrait. Use orientation=portrait or orientation=landscape.\n"
       );
@@ -1513,6 +1905,16 @@ export default {
       } catch (error) {
         return textResponse(error instanceof Error ? error.message : "Bitcoin generation failed", 502);
       }
+    }
+
+    if (url.pathname === "/astro.bmp") {
+      const place = resolveChartPlace(url, request);
+      if (!place) {
+        return textResponse("Pass ?location=CODE (see /locations.txt) or ?lat=..&lon=..&tz=..", 400);
+      }
+      const chart = buildChart(url, place);
+      if (chart.error) return textResponse(chart.error, 400);
+      return bmpResponse(request, renderAstroBmp(chart, orientation, device), "astro.bmp");
     }
 
     if (url.pathname === "/solar.bmp") {
