@@ -12,23 +12,27 @@
 #include <string>
 
 namespace {
-// RX holds the response headers. 4096 fits real OPDS servers; GitHub's release
-// CDN sends more and logs HTTP_HEADER "Buffer length is small", but that's
-// non-fatal: the headers we read (Location, Content-Length) come first and
-// survive. Smaller keeps contiguous heap free while WiFi and TLS are up. TX
-// only carries our GET; the body streams in READ_CHUNK pieces.
-constexpr int HTTP_RX_BUF = 4096;
-constexpr int HTTP_TX_BUF = 1024;
+// RX holds the response headers. A server that sends more logs HTTP_HEADER
+// "Buffer length is small", but that is non-fatal: the headers we read
+// (Location, Content-Length) come first and survive. What matters more here is
+// contiguous heap, because mbedTLS needs a contiguous block per record at the
+// same moment WiFi, the SD write and a full-screen refresh are all live -- the
+// conditions under which a dashboard fetch was observed to stall mid-body with
+// the largest free block down around 20 KB. These are the sizes CrossPoint 1.6
+// ships, so they are proven against the same servers. TX only carries our GET;
+// the body streams in READ_CHUNK pieces.
+constexpr int HTTP_RX_BUF = 2048;
+constexpr int HTTP_TX_BUF = 512;
 // Per-socket-op timeout. Some OPDS download endpoints are slow to send headers
 // (>15s) and chunked catalogs stall mid-body, so 15s killed them. 60s gives
 // slow servers room. esp_http_client's timeout_ms is uint32, so unlike Arduino
 // HTTPClient's uint16 setTimeout it doesn't silently truncate.
 constexpr int HTTP_TIMEOUT_MS = 60000;
-constexpr size_t READ_CHUNK = 2048;
+constexpr size_t READ_CHUNK = 1024;
 // A caller that can cancel is only polled between reads, and a read does not
-// return until it has filled its buffer. 2048 bytes on a slow link is most of
-// a second, long enough for a button tap to fall entirely between two polls,
-// so cancellable transfers read in smaller pieces to stay responsive.
+// return until it has filled its buffer. A kilobyte on a slow link is still
+// long enough for a button tap to fall entirely between two polls, so
+// cancellable transfers read in smaller pieces to stay responsive.
 constexpr size_t CANCELLABLE_READ_CHUNK = 512;
 
 struct Sink {

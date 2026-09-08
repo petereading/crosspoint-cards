@@ -365,6 +365,15 @@ void RemoteImageDashboardActivity::runFetch() {
         }
         break;
     }
+    // The largest free block, not the total, is what an mbedTLS record needs,
+    // and a fetch competing with WiFi, an SD write and a screen refresh has
+    // been seen to stall with it down around 20 KB. Record it on any failure
+    // so a recurrence says whether contiguous heap was the reason.
+    if (failureDetail[0] != '\0') {
+      const size_t used = strlen(failureDetail);
+      snprintf(failureDetail + used, sizeof(failureDetail) - used, " b%uk",
+               static_cast<unsigned>(ESP.getMaxAllocHeap() / 1024));
+    }
   } else if (!validateImageFile(tempPath())) {
     Storage.remove(tempPath());
     state = State::Failed;
