@@ -73,10 +73,22 @@ bool FontDownloadActivity::fetchAndParseManifest() {
   // TLS buffers and the full JSON string in RAM simultaneously.
   static constexpr const char* MANIFEST_TMP = "/fonts_manifest.tmp";
 
-  auto result = HttpDownloader::downloadToFile(FONT_MANIFEST_URL, MANIFEST_TMP, nullptr);
+  // "Failed to fetch font list" on its own cannot be acted on -- it covers a
+  // bad status, a timeout and an SD write alike. Capture which.
+  int httpStatus = 0;
+  size_t received = 0;
+  HttpDownloader::DownloadOptions options;
+  options.outHttpStatus = &httpStatus;
+  options.outBytesReceived = &received;
+
+  auto result = HttpDownloader::downloadToFile(FONT_MANIFEST_URL, MANIFEST_TMP, options);
   if (result != HttpDownloader::OK) {
-    LOG_ERR("FONT", "Failed to fetch manifest from %s", FONT_MANIFEST_URL);
-    errorMessage_ = "Failed to fetch font list";
+    LOG_ERR("FONT", "Failed to fetch manifest from %s (err %d, HTTP %d, %u bytes)", FONT_MANIFEST_URL,
+            static_cast<int>(result), httpStatus, static_cast<unsigned>(received));
+    char detail[64];
+    snprintf(detail, sizeof(detail), "Failed to fetch font list (e%d h%d %uB)", static_cast<int>(result), httpStatus,
+             static_cast<unsigned>(received));
+    errorMessage_ = detail;
     Storage.remove(MANIFEST_TMP);
     return false;
   }

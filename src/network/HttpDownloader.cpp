@@ -131,6 +131,13 @@ HttpDownloader::DownloadError runGet(const std::string& url, const std::string& 
       return stopResult;
     }
     if (esp_http_client_set_redirection(client) != ESP_OK) break;
+    // Close before re-opening. The 30x body has not been read, and with
+    // keep_alive_enable the client would otherwise try to reuse a socket that
+    // is still connected to the old host -- and a GitHub release redirect
+    // crosses hosts, from github.com to the release CDN. Without this the
+    // second open() writes the new request onto the wrong connection, which is
+    // why every redirecting fetch failed while direct ones worked.
+    esp_http_client_close(client);
     err = esp_http_client_open(client, 0);
     if (err != ESP_OK) {
       LOG_ERR("HTTP", "redirect open failed: %s", esp_err_to_name(err));
