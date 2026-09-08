@@ -13,6 +13,46 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   friend class PersistableStore<CrossPointSettings>;
 
  public:
+  static constexpr uint8_t LOCK_SCREEN_CARD_COUNT = 6;
+  static constexpr size_t LOCK_SCREEN_CARD_URL_LEN = 256;
+
+  // Refresh interval for a card slot, in minutes. Out-of-range slots return the
+  // first card's interval rather than reading past the end.
+  uint8_t cardRefreshMinutes(uint8_t slot) const {
+    switch (slot) {
+      case 1:
+        return lockScreenCard2RefreshMinutes;
+      case 2:
+        return lockScreenCard3RefreshMinutes;
+      case 3:
+        return lockScreenCard4RefreshMinutes;
+      case 4:
+        return lockScreenCard5RefreshMinutes;
+      case 5:
+        return lockScreenCard6RefreshMinutes;
+      default:
+        return lockScreenCard1RefreshMinutes;
+    }
+  }
+
+  // Lock-screen cards. Every card is the same thing: a complete public HTTPS
+  // URL to a BMP, fetched verbatim, with its own refresh interval. Whatever
+  // generates the image -- a Worker route, a photo, anything else -- chooses
+  // its own content through query parameters in the URL, so the firmware needs
+  // no per-card routes, parameters or settings of its own.
+  char lockScreenCardUrl[LOCK_SCREEN_CARD_COUNT][LOCK_SCREEN_CARD_URL_LEN] = {};
+  // Named rather than an array because SettingsList addresses numeric settings
+  // by pointer-to-member, which cannot name an array element, and dynamic
+  // accessors are skipped by the settings loader so they would not persist.
+  // cardRefreshMinutes() gives the rest of the firmware indexed access.
+  uint8_t lockScreenCard1RefreshMinutes = 15;
+  uint8_t lockScreenCard2RefreshMinutes = 15;
+  uint8_t lockScreenCard3RefreshMinutes = 15;
+  uint8_t lockScreenCard4RefreshMinutes = 15;
+  uint8_t lockScreenCard5RefreshMinutes = 15;
+  uint8_t lockScreenCard6RefreshMinutes = 15;
+  // Which card the LOCK_SCREEN sleep-screen mode shows.
+  uint8_t sleepLockScreenCard = 0;
   enum SLEEP_SCREEN_MODE {
     DARK = 0,
     LIGHT = 1,
@@ -22,6 +62,8 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
     BLANK = 5,
     QUICK_RESUME = 6,
     TRANSPARENT_CUSTOM = 7,
+    // Show one of the lock-screen cards, chosen by sleepLockScreenCard.
+    LOCK_SCREEN = 8,
     SLEEP_SCREEN_MODE_COUNT
   };
   enum SLEEP_SCREEN_COVER_MODE { FIT = 0, CROP = 1, SLEEP_SCREEN_COVER_MODE_COUNT };

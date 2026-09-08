@@ -21,6 +21,25 @@ class HttpDownloader {
     HTTP_ERROR,
     FILE_ERROR,
     ABORTED,
+    TIMED_OUT,
+  };
+
+  // Called with each body chunk; return false to abort.
+  using CancelCallback = std::function<bool()>;
+
+  // Bounded, cancellable transfer with optional diagnostics. The dashboard
+  // cards need all of it: a wall-clock budget so a stalled fetch cannot hold
+  // the device awake, cache bypass so a card is never served a stale image,
+  // a cancel hook so Back works during a synchronous download, and enough
+  // detail on failure to tell a bad status from a timeout from a short body.
+  struct DownloadOptions {
+    uint32_t operationTimeoutMs = 60000;
+    uint32_t overallTimeoutMs = 0;
+    bool bypassCache = false;
+    CancelCallback cancelRequested;
+    int* outHttpStatus = nullptr;
+    size_t* outBytesReceived = nullptr;
+    size_t* outExpectedBytes = nullptr;
   };
 
   // Pre-flight floor for starting a TLS transfer. Below this the session or
@@ -54,6 +73,11 @@ class HttpDownloader {
    */
   static DownloadError downloadToFile(const std::string& url, const std::string& destPath,
                                       ProgressCallback progress = nullptr, bool* cancelFlag = nullptr,
+                                      const std::string& username = "", const std::string& password = "",
+                                      bool downgradeRedirectsToHttp = false);
+
+  static DownloadError downloadToFile(const std::string& url, const std::string& destPath,
+                                      const DownloadOptions& options, ProgressCallback progress = nullptr,
                                       const std::string& username = "", const std::string& password = "",
                                       bool downgradeRedirectsToHttp = false);
 };

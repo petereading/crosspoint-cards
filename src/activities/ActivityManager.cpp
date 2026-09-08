@@ -18,9 +18,11 @@
 #include "home/FileBrowserActivity.h"
 #include "home/HomeActivity.h"
 #include "home/RecentBooksActivity.h"
+#include "lockscreens/LockScreensActivity.h"
 #include "network/CrossPointWebServerActivity.h"
 #include "network/UsbDriveActivity.h"
 #include "reader/ReaderActivity.h"
+#include "remote/RemoteImageDashboardActivity.h"
 #include "settings/OpdsServerListActivity.h"
 #include "settings/SettingsActivity.h"
 #include "util/BmpViewerActivity.h"
@@ -223,6 +225,21 @@ void ActivityManager::replaceActivity(std::unique_ptr<Activity>&& newActivity) {
     currentActivity = std::move(newActivity);
     currentActivity->onEnter();
   }
+}
+
+void ActivityManager::goToLockScreenCard(const uint8_t slot) {
+  pushActivity(std::make_unique<RemoteImageDashboardActivity>(renderer, mappedInput, slot));
+}
+
+// The sleep-screen card runs unattended: it fetches, paints, then arms its own
+// timed deep sleep rather than handing back to the sleep activity.
+void ActivityManager::goToLockScreenDashboard() {
+  replaceActivity(std::make_unique<RemoteImageDashboardActivity>(renderer, mappedInput, SETTINGS.sleepLockScreenCard,
+                                                                 /*autoRefresh=*/true));
+}
+
+void ActivityManager::goToLockScreens() {
+  replaceActivity(std::make_unique<LockScreensActivity>(renderer, mappedInput));
 }
 
 void ActivityManager::goToFileTransfer() {

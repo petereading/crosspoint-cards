@@ -42,6 +42,12 @@ class HalPowerManager {
   // Should be called inside main loop() to handle the currentLockMode
   void startDeepSleep(HalGPIO& gpio) const;
 
+  // Deep sleep with an RTC timer wakeup (plus the power button). Keeps the
+  // battery latch (GPIO13) engaged so the RTC stays powered on battery --
+  // higher idle draw than startDeepSleep()'s full power-off, but that path
+  // cannot self-wake. Used by a lock-screen card's timed refresh.
+  void startTimedDeepSleep(HalGPIO& gpio, uint64_t seconds) const;
+
   // Get battery percentage (range 0-100)
   uint16_t getBatteryPercentage() const;
 

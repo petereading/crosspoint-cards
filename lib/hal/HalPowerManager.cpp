@@ -183,3 +183,28 @@ HalPowerManager::Lock::~Lock() {
   }
   xSemaphoreGive(powerManager.modeMutex);
 }
+
+void HalPowerManager::startTimedDeepSleep(HalGPIO& gpio, const uint64_t seconds) const {
+  // Ensure that the power button has been released to avoid immediately turning back on
+  while (gpio.isPressed(HalGPIO::BTN_POWER)) {
+    delay(50);
+    gpio.update();
+  }
+
+#ifdef ENABLE_SERIAL_LOG
+  logSerial.end();
+#endif
+
+  // Keep the battery latch MOSFET (GPIO13) HIGH: unlike startDeepSleep(), the
+  // MCU must stay powered (in deep sleep) so the RTC timer can fire on battery.
+  constexpr gpio_num_t GPIO_SPIWP = GPIO_NUM_13;
+  gpio_set_direction(GPIO_SPIWP, GPIO_MODE_OUTPUT);
+  gpio_set_level(GPIO_SPIWP, 1);
+  esp_sleep_config_gpio_isolate();
+  gpio_deep_sleep_hold_en();
+  gpio_hold_en(GPIO_SPIWP);
+  pinMode(InputManager::POWER_BUTTON_PIN, INPUT_PULLUP);
+  esp_deep_sleep_enable_gpio_wakeup(1ULL << InputManager::POWER_BUTTON_PIN, ESP_GPIO_WAKEUP_GPIO_LOW);
+  esp_sleep_enable_timer_wakeup(seconds * 1000000ULL);
+  esp_deep_sleep_start();
+}

@@ -209,6 +209,7 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
     sleepScreenValues[CrossPointSettings::BLANK] = StrId::STR_NONE_OPT;
     sleepScreenValues[CrossPointSettings::QUICK_RESUME] = StrId::STR_QUICK_RESUME;
     sleepScreenValues[CrossPointSettings::TRANSPARENT_CUSTOM] = StrId::STR_TRANSPARENT;
+    sleepScreenValues[CrossPointSettings::LOCK_SCREEN] = StrId::STR_LOCK_SCREEN;
 
     std::vector<StrId> statusBarClockValues(CrossPointSettings::STATUS_BAR_CLOCK_MODE_COUNT);
     statusBarClockValues[CrossPointSettings::STATUS_BAR_CLOCK_HIDE] = StrId::STR_HIDE;
@@ -219,6 +220,11 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
         // --- Display ---
         SettingInfo::Enum(StrId::STR_SLEEP_SCREEN, &CrossPointSettings::sleepScreen, std::move(sleepScreenValues),
                           "sleepScreen", StrId::STR_CAT_DISPLAY),
+        // Which card the LOCK_SCREEN sleep mode shows.
+        SettingInfo::Enum(StrId::STR_LOCK_SCREEN_TYPE, &CrossPointSettings::sleepLockScreenCard,
+                          {StrId::STR_LOCK_SCREEN_CARD_1, StrId::STR_LOCK_SCREEN_CARD_2, StrId::STR_LOCK_SCREEN_CARD_3,
+                           StrId::STR_LOCK_SCREEN_CARD_4, StrId::STR_LOCK_SCREEN_CARD_5, StrId::STR_LOCK_SCREEN_CARD_6},
+                          "sleepLockScreenCard", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_SLEEP_COVER_MODE, &CrossPointSettings::sleepScreenCoverMode,
                           {StrId::STR_FIT, StrId::STR_CROP}, "sleepScreenCoverMode", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_SLEEP_COVER_FILTER, &CrossPointSettings::sleepScreenCoverFilter,
@@ -444,6 +450,41 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
         // on next WiFi connect, which is useful when crossing time zones.
         SettingInfo::Toggle(StrId::STR_CLOCK_SYNCED, &CrossPointSettings::clockHasBeenSynced, "clockHasBeenSynced",
                             StrId::STR_CUSTOMISE_STATUS_BAR),
+
+        // --- Lock-screen cards ---
+        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_1, &CrossPointSettings::lockScreenCard1RefreshMinutes,
+                           {1, 240, 1}, "lockScreenCard1RefreshMinutes", StrId::STR_CAT_SYSTEM),
+        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_2, &CrossPointSettings::lockScreenCard2RefreshMinutes,
+                           {1, 240, 1}, "lockScreenCard2RefreshMinutes", StrId::STR_CAT_SYSTEM),
+        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_3, &CrossPointSettings::lockScreenCard3RefreshMinutes,
+                           {1, 240, 1}, "lockScreenCard3RefreshMinutes", StrId::STR_CAT_SYSTEM),
+        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_4, &CrossPointSettings::lockScreenCard4RefreshMinutes,
+                           {1, 240, 1}, "lockScreenCard4RefreshMinutes", StrId::STR_CAT_SYSTEM),
+        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_5, &CrossPointSettings::lockScreenCard5RefreshMinutes,
+                           {1, 240, 1}, "lockScreenCard5RefreshMinutes", StrId::STR_CAT_SYSTEM),
+        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_6, &CrossPointSettings::lockScreenCard6RefreshMinutes,
+                           {1, 240, 1}, "lockScreenCard6RefreshMinutes", StrId::STR_CAT_SYSTEM),
+        // The card URLs are web/JSON only -- on the device they are entered by
+        // opening the card itself. The category keeps them out of the four
+        // device settings tabs.
+        SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_1, SETTINGS.lockScreenCardUrl[0],
+                            CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard1Url",
+                            StrId::STR_LOCK_SCREENS),
+        SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_2, SETTINGS.lockScreenCardUrl[1],
+                            CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard2Url",
+                            StrId::STR_LOCK_SCREENS),
+        SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_3, SETTINGS.lockScreenCardUrl[2],
+                            CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard3Url",
+                            StrId::STR_LOCK_SCREENS),
+        SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_4, SETTINGS.lockScreenCardUrl[3],
+                            CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard4Url",
+                            StrId::STR_LOCK_SCREENS),
+        SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_5, SETTINGS.lockScreenCardUrl[4],
+                            CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard5Url",
+                            StrId::STR_LOCK_SCREENS),
+        SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_6, SETTINGS.lockScreenCardUrl[5],
+                            CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard6Url",
+                            StrId::STR_LOCK_SCREENS),
     };
     // Only show tilt page turn setting when the QMI8658 IMU is present (X3)
     if (halTiltSensor.isAvailable()) {

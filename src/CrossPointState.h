@@ -22,6 +22,15 @@ class CrossPointState : public PersistableStore<CrossPointState> {
   uint8_t recentOverlaySleepFill = 0;
   uint8_t readerActivityLoadCount = 0;
   bool lastSleepFromReader = false;
+
+  // Which lock-screen card, if any, the device is currently cycling through
+  // its timed sleep. Cards occupy DASHBOARD_CARD_BASE + slot index, so adding
+  // a slot needs no new mode value.
+  enum : uint8_t {
+    DASHBOARD_NONE = 0,
+    DASHBOARD_CARD_BASE = 1,
+  };
+  uint8_t activeDashboardMode = DASHBOARD_NONE;
   bool showBootScreen = true;
 
   static const char* getFilePath() { return "/.crosspoint/state.json"; }

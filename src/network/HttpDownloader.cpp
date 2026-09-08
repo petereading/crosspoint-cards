@@ -38,8 +38,28 @@ struct Sink {
   std::function<bool(const uint8_t*, size_t)> write;  // returns false to abort the transfer
   HttpDownloader::ProgressCallback progress;
   bool* cancelFlag = nullptr;
+  HttpDownloader::CancelCallback cancelRequested;
+  uint32_t operationTimeoutMs = HTTP_TIMEOUT_MS;
+  uint32_t overallTimeoutMs = 0;
+  unsigned long startedAtMs = 0;
+  bool bypassCache = false;
+  bool timedOut = false;
+  int* outHttpStatus = nullptr;
   size_t total = 0;
   size_t downloaded = 0;
+
+  // One predicate for every reason to stop, so the transfer callback has a
+  // single question to ask. Records which reason it was, because the caller
+  // needs to tell a user cancelling from a budget running out.
+  bool shouldStop() {
+    if (cancelFlag && *cancelFlag) return true;
+    if (cancelRequested && cancelRequested()) return true;
+    if (overallTimeoutMs != 0 && millis() - startedAtMs >= overallTimeoutMs) {
+      timedOut = true;
+      return true;
+    }
+    return false;
+  }
 };
 
 bool isRedirect(int status) {
@@ -71,7 +91,7 @@ HttpDownloader::DownloadError runGetWolf(const std::string& startUrl, const std:
 
   for (int hop = 0; hop <= MAX_REDIRECTS; ++hop) {
     freeink::SecureHttpClient http;
-    http.setTimeout(HTTP_TIMEOUT_MS);
+    http.setTimeout(sink.operationTimeoutMs != 0 ? sink.operationTimeoutMs : HTTP_TIMEOUT_MS);
     http.setInsecure();
     if (!http.begin(url)) {
       LOG_ERR("HTTP", "wolfSSL bad URL: %s", url.c_str());
@@ -81,6 +101,10 @@ HttpDownloader::DownloadError runGetWolf(const std::string& startUrl, const std:
     // append a second User-Agent header, which strict servers reject (aiohttp
     // answers 400 "Duplicate 'User-Agent' header found").
     http.setUserAgent("CrossPoint-ESP32-" CROSSPOINT_VERSION);
+    if (sink.bypassCache) {
+      http.addHeader("Cache-Control", "no-cache, no-store, max-age=0");
+      http.addHeader("Pragma", "no-cache");
+    }
     if (!username.empty() && !password.empty()) {
       const std::string credentials = username + ":" + password;
       const String encoded = base64::encode(credentials.c_str());
@@ -97,9 +121,10 @@ HttpDownloader::DownloadError runGetWolf(const std::string& startUrl, const std:
           if (sink.progress && sink.total > 0) sink.progress(sink.downloaded, sink.total);
           return true;
         },
-        [&sink]() { return sink.cancelFlag && *sink.cancelFlag; });
+        [&sink]() { return sink.shouldStop(); });
 
-    if (http.aborted()) return HttpDownloader::ABORTED;
+    if (sink.outHttpStatus && status > 0) *sink.outHttpStatus = status;
+    if (http.aborted()) return sink.timedOut ? HttpDownloader::TIMED_OUT : HttpDownloader::ABORTED;
     if (status < 0) {
       LOG_ERR("HTTP", "wolfSSL request failed: %s", url.c_str());
       return HttpDownloader::HTTP_ERROR;
@@ -289,10 +314,13 @@ bool HttpDownloader::fetchUrl(const std::string& url, const DataCallback& onData
   return runGetSecure(url, username, password, sink) == OK;
 }
 
-HttpDownloader::DownloadError HttpDownloader::downloadToFile(const std::string& url, const std::string& destPath,
-                                                             ProgressCallback progress, bool* cancelFlag,
-                                                             const std::string& username, const std::string& password,
-                                                             bool downgradeRedirectsToHttp) {
+namespace {
+// Both public overloads land here; options is null for the simple one.
+HttpDownloader::DownloadError downloadToFileCommon(const std::string& url, const std::string& destPath,
+                                                   HttpDownloader::ProgressCallback progress, bool* cancelFlag,
+                                                   const std::string& username, const std::string& password,
+                                                   bool downgradeRedirectsToHttp,
+                                                   const HttpDownloader::DownloadOptions* options) {
   LOG_DBG("HTTP", "Downloading: %s -> %s", url.c_str(), destPath.c_str());
 
   if (Storage.exists(destPath.c_str())) {
@@ -301,28 +329,57 @@ HttpDownloader::DownloadError HttpDownloader::downloadToFile(const std::string& 
   HalFile file;
   if (!Storage.openFileForWrite("HTTP", destPath.c_str(), file)) {
     LOG_ERR("HTTP", "Failed to open file for writing");
-    return FILE_ERROR;
+    return HttpDownloader::FILE_ERROR;
   }
 
   Sink sink;
   sink.progress = std::move(progress);
   sink.cancelFlag = cancelFlag;
+  sink.startedAtMs = millis();
+  if (options) {
+    sink.cancelRequested = options->cancelRequested;
+    sink.operationTimeoutMs = options->operationTimeoutMs;
+    sink.overallTimeoutMs = options->overallTimeoutMs;
+    sink.bypassCache = options->bypassCache;
+    sink.outHttpStatus = options->outHttpStatus;
+  }
   sink.write = [&file](const uint8_t* data, size_t len) { return file.write(data, len) == len; };
 
-  const DownloadError result = runGetSecure(url, username, password, sink, downgradeRedirectsToHttp);
+  const auto result = runGetSecure(url, username, password, sink, downgradeRedirectsToHttp);
+  if (options) {
+    if (options->outBytesReceived) *options->outBytesReceived = sink.downloaded;
+    if (options->outExpectedBytes) *options->outExpectedBytes = sink.total;
+  }
   // Close before any remove() on the same path; DESTRUCTOR_CLOSES_FILE would
   // otherwise close only after the remove.
   file.close();
 
-  if (result != OK) {
+  if (result != HttpDownloader::OK) {
     Storage.remove(destPath.c_str());
     return result;
   }
   if (sink.downloaded == 0) {
     LOG_ERR("HTTP", "no data received");
     Storage.remove(destPath.c_str());
-    return HTTP_ERROR;
+    return HttpDownloader::HTTP_ERROR;
   }
   LOG_DBG("HTTP", "Downloaded %zu bytes", sink.downloaded);
-  return OK;
+  return HttpDownloader::OK;
+}
+}  // namespace
+
+HttpDownloader::DownloadError HttpDownloader::downloadToFile(const std::string& url, const std::string& destPath,
+                                                             ProgressCallback progress, bool* cancelFlag,
+                                                             const std::string& username, const std::string& password,
+                                                             bool downgradeRedirectsToHttp) {
+  return downloadToFileCommon(url, destPath, std::move(progress), cancelFlag, username, password,
+                              downgradeRedirectsToHttp, nullptr);
+}
+
+HttpDownloader::DownloadError HttpDownloader::downloadToFile(const std::string& url, const std::string& destPath,
+                                                             const DownloadOptions& options, ProgressCallback progress,
+                                                             const std::string& username, const std::string& password,
+                                                             bool downgradeRedirectsToHttp) {
+  return downloadToFileCommon(url, destPath, std::move(progress), nullptr, username, password, downgradeRedirectsToHttp,
+                              &options);
 }
