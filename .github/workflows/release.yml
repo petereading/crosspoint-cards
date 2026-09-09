@@ -9,6 +9,11 @@ on:
   push:
     tags:
       - '*'
+  # Build on demand from any branch. The tag-push path above still drives real
+  # releases; this exists so a work-in-progress branch can be built with the
+  # same toolchain and the same firmware_tuned core rebuild as a release,
+  # rather than by hand on a developer machine.
+  workflow_dispatch:
 
 permissions:
   contents: read
