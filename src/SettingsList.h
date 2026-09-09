@@ -20,6 +20,26 @@
 
 // Build the font family setting dynamically. When registry is non-null, SD card fonts
 // are appended after the built-in fonts. Otherwise only built-in fonts are listed.
+// A card's refresh interval as a short list of useful values. valuePtr is kept
+// (the stored index is the setting's value) so the generic JSON loop persists
+// it; only the labels are built at runtime, since they are numbers.
+inline SettingInfo buildCardIntervalSetting(StrId nameId, uint8_t CrossPointSettings::* field, const char* key) {
+  SettingInfo s;
+  s.nameId = nameId;
+  s.type = SettingType::ENUM;
+  s.valuePtr = field;
+  s.key = key;
+  s.category = StrId::STR_CAT_SYSTEM;
+  s.enumStringValues.reserve(CrossPointSettings::CARD_REFRESH_OPTION_COUNT);
+  for (uint8_t i = 0; i < CrossPointSettings::CARD_REFRESH_OPTION_COUNT; ++i) {
+    char label[16];
+    snprintf(label, sizeof(label), I18N.get(StrId::STR_SLEEP_TIMER_VALUE_FORMAT),
+             static_cast<unsigned>(CrossPointSettings::CARD_REFRESH_MINUTES[i]));
+    s.enumStringValues.emplace_back(label);
+  }
+  return s;
+}
+
 inline SettingInfo buildFontFamilySetting(const SdCardFontRegistry* registry) {
   // Built-in font labels (StrId)
   std::vector<StrId> enumValues = {StrId::STR_NOTO_SERIF, StrId::STR_NOTO_SANS};
@@ -452,18 +472,18 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                             StrId::STR_CUSTOMISE_STATUS_BAR),
 
         // --- Lock-screen cards ---
-        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_1, &CrossPointSettings::lockScreenCard1RefreshMinutes,
-                           {1, 240, 1}, "lockScreenCard1RefreshMinutes", StrId::STR_CAT_SYSTEM),
-        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_2, &CrossPointSettings::lockScreenCard2RefreshMinutes,
-                           {1, 240, 1}, "lockScreenCard2RefreshMinutes", StrId::STR_CAT_SYSTEM),
-        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_3, &CrossPointSettings::lockScreenCard3RefreshMinutes,
-                           {1, 240, 1}, "lockScreenCard3RefreshMinutes", StrId::STR_CAT_SYSTEM),
-        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_4, &CrossPointSettings::lockScreenCard4RefreshMinutes,
-                           {1, 240, 1}, "lockScreenCard4RefreshMinutes", StrId::STR_CAT_SYSTEM),
-        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_5, &CrossPointSettings::lockScreenCard5RefreshMinutes,
-                           {1, 240, 1}, "lockScreenCard5RefreshMinutes", StrId::STR_CAT_SYSTEM),
-        SettingInfo::Value(StrId::STR_LOCK_SCREEN_CARD_6, &CrossPointSettings::lockScreenCard6RefreshMinutes,
-                           {1, 240, 1}, "lockScreenCard6RefreshMinutes", StrId::STR_CAT_SYSTEM),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_1, &CrossPointSettings::lockScreenCard1RefreshInterval,
+                                 "lockScreenCard1RefreshInterval"),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_2, &CrossPointSettings::lockScreenCard2RefreshInterval,
+                                 "lockScreenCard2RefreshInterval"),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_3, &CrossPointSettings::lockScreenCard3RefreshInterval,
+                                 "lockScreenCard3RefreshInterval"),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_4, &CrossPointSettings::lockScreenCard4RefreshInterval,
+                                 "lockScreenCard4RefreshInterval"),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_5, &CrossPointSettings::lockScreenCard5RefreshInterval,
+                                 "lockScreenCard5RefreshInterval"),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_6, &CrossPointSettings::lockScreenCard6RefreshInterval,
+                                 "lockScreenCard6RefreshInterval"),
         // The card URLs are web/JSON only -- on the device they are entered by
         // opening the card itself. The category keeps them out of the four
         // device settings tabs.

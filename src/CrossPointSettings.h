@@ -14,25 +14,45 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
 
  public:
   static constexpr uint8_t LOCK_SCREEN_CARD_COUNT = 6;
+  // A card's refresh interval is stored as an index into this ladder rather
+  // than as a raw minute count. The on-device settings editor steps a VALUE
+  // setting by one and wraps at the maximum, so a 1..240 range took hundreds
+  // of presses to cross; a short list of useful intervals is one press each.
+  static constexpr uint8_t CARD_REFRESH_MINUTES[] = {1, 2, 5, 10, 15, 30, 60, 120, 240};
+  static constexpr uint8_t CARD_REFRESH_OPTION_COUNT =
+      static_cast<uint8_t>(sizeof(CARD_REFRESH_MINUTES) / sizeof(CARD_REFRESH_MINUTES[0]));
+  static constexpr uint8_t CARD_REFRESH_DEFAULT_INDEX = 4;  // 15 minutes
   static constexpr size_t LOCK_SCREEN_CARD_URL_LEN = 256;
 
   // Refresh interval for a card slot, in minutes. Out-of-range slots return the
   // first card's interval rather than reading past the end.
+  // Refresh interval for a card slot, in minutes. Out-of-range slots and stale
+  // indexes both fall back to the first card / the default interval rather than
+  // reading past the end of either array.
   uint8_t cardRefreshMinutes(uint8_t slot) const {
+    uint8_t index = CARD_REFRESH_DEFAULT_INDEX;
     switch (slot) {
       case 1:
-        return lockScreenCard2RefreshMinutes;
+        index = lockScreenCard2RefreshInterval;
+        break;
       case 2:
-        return lockScreenCard3RefreshMinutes;
+        index = lockScreenCard3RefreshInterval;
+        break;
       case 3:
-        return lockScreenCard4RefreshMinutes;
+        index = lockScreenCard4RefreshInterval;
+        break;
       case 4:
-        return lockScreenCard5RefreshMinutes;
+        index = lockScreenCard5RefreshInterval;
+        break;
       case 5:
-        return lockScreenCard6RefreshMinutes;
+        index = lockScreenCard6RefreshInterval;
+        break;
       default:
-        return lockScreenCard1RefreshMinutes;
+        index = lockScreenCard1RefreshInterval;
+        break;
     }
+    if (index >= CARD_REFRESH_OPTION_COUNT) index = CARD_REFRESH_DEFAULT_INDEX;
+    return CARD_REFRESH_MINUTES[index];
   }
 
   // Lock-screen cards. Every card is the same thing: a complete public HTTPS
@@ -45,12 +65,12 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   // by pointer-to-member, which cannot name an array element, and dynamic
   // accessors are skipped by the settings loader so they would not persist.
   // cardRefreshMinutes() gives the rest of the firmware indexed access.
-  uint8_t lockScreenCard1RefreshMinutes = 15;
-  uint8_t lockScreenCard2RefreshMinutes = 15;
-  uint8_t lockScreenCard3RefreshMinutes = 15;
-  uint8_t lockScreenCard4RefreshMinutes = 15;
-  uint8_t lockScreenCard5RefreshMinutes = 15;
-  uint8_t lockScreenCard6RefreshMinutes = 15;
+  uint8_t lockScreenCard1RefreshInterval = CARD_REFRESH_DEFAULT_INDEX;
+  uint8_t lockScreenCard2RefreshInterval = CARD_REFRESH_DEFAULT_INDEX;
+  uint8_t lockScreenCard3RefreshInterval = CARD_REFRESH_DEFAULT_INDEX;
+  uint8_t lockScreenCard4RefreshInterval = CARD_REFRESH_DEFAULT_INDEX;
+  uint8_t lockScreenCard5RefreshInterval = CARD_REFRESH_DEFAULT_INDEX;
+  uint8_t lockScreenCard6RefreshInterval = CARD_REFRESH_DEFAULT_INDEX;
   // Which card the LOCK_SCREEN sleep-screen mode shows.
   uint8_t sleepLockScreenCard = 0;
   enum SLEEP_SCREEN_MODE {

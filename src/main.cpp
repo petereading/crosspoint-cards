@@ -150,6 +150,10 @@ enum class BootResume : uint8_t {
 // device back up against the user's sleep gesture. Never cleared:
 // startDeepSleep() does not return, so a set latch only ends at the wakeup reset.
 static bool deepSleepInProgress = false;
+// Inactivity timer for auto-sleep. At file scope because the card sleep-screen
+// handoff has to clear it: the swap it queues is only applied at the end of
+// loop(), past the auto-sleep branch's early return.
+static unsigned long lastActivityTime = 0;
 
 #if FREEINK_CAP_TOUCH
 static bool finishWifiSessionWithoutRestart() {
@@ -291,6 +295,12 @@ bool enterLockScreenSleep() {
   // initialise at that clock -- WiFi.mode() then blocks forever, wedging the
   // loop task with no crash. Restore full speed before handing off.
   powerManager.setPowerSaving(false);
+  // The card is queued as a deferred activity swap, and the dispatcher that
+  // applies it runs at the end of loop() -- past the auto-sleep branch that
+  // returns early. Without clearing the inactivity timer the next iteration
+  // still sees an expired timeout, queues the swap again and returns again,
+  // so the card never enters until a button press resets the timer.
+  lastActivityTime = millis();
   APP_STATE.lastSleepFromReader = activityManager.isReaderActivity();
   APP_STATE.showBootScreen = true;  // a real wake out of the mode shows the splash
   APP_STATE.saveToFile();
@@ -696,7 +706,7 @@ void loop() {
   }
 
   // Check for any user activity (button press or release) or active background work
-  static unsigned long lastActivityTime = millis();
+
   if (gpio.wasAnyPressed() || gpio.wasAnyReleased() || gpio.wasTouchActivity() || halTiltSensor.hadActivity() ||
       activityManager.preventAutoSleep()) {
     lastActivityTime = millis();         // Reset inactivity timer
