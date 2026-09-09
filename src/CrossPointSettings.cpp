@@ -166,7 +166,14 @@ bool CrossPointSettings::fromJson(JsonVariantConst doc) {
       const uint8_t fieldDefault = s.*(info.valuePtr);  // struct-initializer default, read before we overwrite it
       uint8_t v = doc[info.key] | fieldDefault;
       if (info.type == SettingType::ENUM) {
-        v = clamp(v, (uint8_t)info.enumValues.size(), fieldDefault);
+        // An enum may label its options with StrIds or with runtime strings.
+        // Clamping against enumValues alone makes the range zero for the
+        // latter, so every load falls back to the default -- the web page saves
+        // a value (handlePostSettings already picks the right list) and the
+        // device forgets it on the next boot.
+        const uint8_t optionCount = info.enumStringValues.empty() ? static_cast<uint8_t>(info.enumValues.size())
+                                                                  : static_cast<uint8_t>(info.enumStringValues.size());
+        v = clamp(v, optionCount, fieldDefault);
       } else if (info.type == SettingType::TOGGLE) {
         v = clamp(v, (uint8_t)2, fieldDefault);
       } else if (info.type == SettingType::VALUE) {

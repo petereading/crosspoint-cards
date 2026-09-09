@@ -278,9 +278,14 @@ bool FontDownloadActivity::fetchAndParseManifest() {
     families_.push_back(std::move(family));
   }
 
-  // Parsing has allocated a great deal since the pre-flight guard above -- the
-  // JsonDocument for the manifest plus a string-bearing entry per family -- and
-  // these reserves run on what is left. operator new cannot throw here
+  // Everything needed from the manifest has been copied into families_ and
+  // scriptGroupLabels_, so drop the document before allocating anything else.
+  // It holds the whole parsed manifest -- tens of kilobytes for a 27 KB file --
+  // and on this board that is most of the free heap.
+  doc.clear();
+  doc.shrinkToFit();
+
+  // These reserves run on what is left. operator new cannot throw here
   // (-fno-exceptions), so a failure aborts the device rather than returning
   // null. Check first and fail into the error UI instead.
   const size_t rowCapacity = std::max(families_.size() + 2, scriptGroupLabels_.size() + 1);

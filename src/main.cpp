@@ -542,16 +542,25 @@ void setup() {
   bool allowFastInitialReaderRefresh = false;
   bool needsWakeRefresh = false;
 
-  // A card cycling through timed sleep records its slot in APP_STATE. An RTC
-  // timer wake means "refresh and redraw"; any other wake -- power button,
-  // cold boot -- is the user leaving the mode.
+  // A card cycling through timed sleep records its slot in APP_STATE. Leaving
+  // the mode has to be something the user did: a verified power-button hold, a
+  // flash, or USB power arriving. Anything else keeps the card cycling.
+  //
+  // Testing the RTC cause alone was not enough. startTimedDeepSleep arms the
+  // power-button GPIO next to the timer so a card can be dismissed, and a wake
+  // attributed to that pin without a verified hold dropped the device to the
+  // home menu mid-cycle. Trusting the same verification the rest of the boot
+  // path uses keeps a glitch on that pin from ending the mode.
+  const bool userEndedCardMode = (wakeupReason == HalGPIO::WakeupReason::PowerButton && wakeHoldVerified) ||
+                                 wakeupReason == HalGPIO::WakeupReason::AfterFlash ||
+                                 wakeupReason == HalGPIO::WakeupReason::AfterUSBPower;
   uint8_t dashboardResume = CrossPointState::DASHBOARD_NONE;
   if (APP_STATE.activeDashboardMode != CrossPointState::DASHBOARD_NONE) {
-    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
-      LOG_INF("MAIN", "Timer wake: refreshing card %u", APP_STATE.activeDashboardMode);
+    if (!userEndedCardMode) {
+      LOG_INF("MAIN", "Timed wake: refreshing card %u", APP_STATE.activeDashboardMode);
       dashboardResume = APP_STATE.activeDashboardMode;
     } else {
-      LOG_INF("MAIN", "Non-timer wake: leaving card mode");
+      LOG_INF("MAIN", "User wake: leaving card mode");
       APP_STATE.activeDashboardMode = CrossPointState::DASHBOARD_NONE;
       APP_STATE.saveToFile();
     }
