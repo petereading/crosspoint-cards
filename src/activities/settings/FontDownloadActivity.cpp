@@ -122,6 +122,18 @@ void FontDownloadActivity::onWifiSelectionComplete(const bool success) {
 
 // --- Manifest fetching ---
 
+namespace {
+// "Memory error" on its own says nothing that can be acted on, and the LOG_ERR
+// beside each of these sites is invisible on a release build. Carry the two
+// numbers the guards actually test onto the screen.
+std::string formatLowHeap() {
+  char buf[64];
+  snprintf(buf, sizeof(buf), "%s (%uk free, %uk block)", I18N.get(StrId::STR_MEMORY_ERROR),
+           static_cast<unsigned>(ESP.getFreeHeap() / 1024), static_cast<unsigned>(ESP.getMaxAllocHeap() / 1024));
+  return buf;
+}
+}  // namespace
+
 bool FontDownloadActivity::fetchAndParseManifest() {
   // Download manifest to a temp file on SD card to avoid holding both
   // TLS buffers and the full JSON string in RAM simultaneously.
@@ -133,7 +145,7 @@ bool FontDownloadActivity::fetchAndParseManifest() {
   if (ESP.getFreeHeap() < HttpDownloader::MIN_TLS_FREE_HEAP ||
       ESP.getMaxAllocHeap() < HttpDownloader::MIN_TLS_MAX_ALLOC) {
     LOG_ERR("FONT", "Low heap for manifest (%u free, %u max block)", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
-    errorMessage_ = tr(STR_MEMORY_ERROR);
+    errorMessage_ = formatLowHeap();
     return false;
   }
 
@@ -266,7 +278,20 @@ bool FontDownloadActivity::fetchAndParseManifest() {
     families_.push_back(std::move(family));
   }
 
+  // Parsing has allocated a great deal since the pre-flight guard above -- the
+  // JsonDocument for the manifest plus a string-bearing entry per family -- and
+  // these reserves run on what is left. operator new cannot throw here
+  // (-fno-exceptions), so a failure aborts the device rather than returning
+  // null. Check first and fail into the error UI instead.
   const size_t rowCapacity = std::max(families_.size() + 2, scriptGroupLabels_.size() + 1);
+  const size_t rowBytes = rowCapacity * (sizeof(freeink::ui::ListItem) + sizeof(std::string));
+  if (ESP.getMaxAllocHeap() < rowBytes * 2) {
+    LOG_ERR("FONT", "Low heap for %u rows (%u free, %u max block)", static_cast<unsigned>(rowCapacity),
+            ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+    errorMessage_ = formatLowHeap();
+    families_.clear();
+    return false;
+  }
   rowLabels_.reserve(rowCapacity);
   rowItems_.reserve(rowCapacity);
 
@@ -452,7 +477,7 @@ void FontDownloadActivity::downloadFamily(ManifestFamily& family) {
     LOG_ERR("FONT", "Low heap for download (%u free, %u max block)", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
     RenderLock lock(*this);
     state_ = ERROR;
-    errorMessage_ = tr(STR_MEMORY_ERROR);
+    errorMessage_ = formatLowHeap();
     return;
   }
 
