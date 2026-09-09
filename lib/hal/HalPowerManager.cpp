@@ -185,7 +185,8 @@ HalPowerManager::Lock::~Lock() {
 }
 
 void HalPowerManager::startTimedDeepSleep(HalGPIO& gpio, const uint64_t seconds) const {
-  // Ensure that the power button has been released to avoid immediately turning back on
+  // Ensure the power button has been released, so holding it does not wake the
+  // device again the instant it sleeps.
   while (gpio.isPressed(HalGPIO::BTN_POWER)) {
     delay(50);
     gpio.update();
@@ -195,16 +196,37 @@ void HalPowerManager::startTimedDeepSleep(HalGPIO& gpio, const uint64_t seconds)
   logSerial.end();
 #endif
 
-  // Keep the battery latch MOSFET (GPIO13) HIGH: unlike startDeepSleep(), the
-  // MCU must stay powered (in deep sleep) so the RTC timer can fire on battery.
-  constexpr gpio_num_t GPIO_SPIWP = GPIO_NUM_13;
-  gpio_set_direction(GPIO_SPIWP, GPIO_MODE_OUTPUT);
-  gpio_set_level(GPIO_SPIWP, 1);
+  // Hold every configured power latch HIGH through deep sleep -- GPIO13 on the
+  // C3 Xteink boards included. This is the one place that differs from
+  // startDeepSleep(), which drives that pin LOW to cut battery power: a timed
+  // wake needs the MCU to stay powered so the RTC can fire on battery.
+  for (const int8_t pin : {BoardConfig::ACTIVE.power.latch0, BoardConfig::ACTIVE.power.latch1}) {
+    if (pin < 0) continue;
+    const auto g = static_cast<gpio_num_t>(pin);
+    // Release any surviving pad hold first; a held pad ignores the drive.
+    gpio_hold_dis(g);
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, HIGH);
+    gpio_hold_en(g);
+  }
+
   esp_sleep_config_gpio_isolate();
   gpio_deep_sleep_hold_en();
-  gpio_hold_en(GPIO_SPIWP);
-  pinMode(InputManager::POWER_BUTTON_PIN, INPUT_PULLUP);
-  esp_deep_sleep_enable_gpio_wakeup(1ULL << InputManager::POWER_BUTTON_PIN, ESP_GPIO_WAKEUP_GPIO_LOW);
+
+#if !SOC_PM_SUPPORT_EXT1_WAKEUP
+  // Chips without EXT1 wake on a plain GPIO level. Arming the power button
+  // alongside the timer is what lets the user leave a cycling card early.
+  const int8_t powerPin = BoardConfig::ACTIVE.input.power;
+  if (powerPin >= 0) {
+    pinMode(powerPin, INPUT_PULLUP);
+    esp_deep_sleep_enable_gpio_wakeup(1ULL << powerPin, ESP_GPIO_WAKEUP_GPIO_LOW);
+  }
+#endif
+  // On EXT1-capable parts only the timer is armed. The card sleep screen is an
+  // X4/X3 feature and those are the chips above; adding an EXT1 source here
+  // would be untested wake configuration on hardware that never reaches this
+  // code, so it is left out deliberately rather than guessed at.
+
   esp_sleep_enable_timer_wakeup(seconds * 1000000ULL);
   esp_deep_sleep_start();
 }
