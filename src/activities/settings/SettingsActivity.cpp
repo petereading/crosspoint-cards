@@ -274,20 +274,33 @@ void SettingsActivity::toggleCurrentSetting() {
     SETTINGS.*(setting.valuePtr) = !currentValue;
   } else if (setting.type == SettingType::ENUM && setting.valuePtr != nullptr) {
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr);
-    if (setting.enumValues.size() > 2) {
+    // An enum labels its options with StrIds or with runtime strings; only one
+    // of the two lists is populated. Reading enumValues alone made the option
+    // count zero for a string-labelled enum, so the popup never opened and the
+    // fallback below became a modulo by zero -- which on RISC-V returns the
+    // dividend rather than trapping, so selecting the row silently did nothing.
+    const size_t optionCount =
+        setting.enumStringValues.empty() ? setting.enumValues.size() : setting.enumStringValues.size();
+    if (optionCount == 0) return;
+    if (optionCount > 2) {
       const auto valuePtr = setting.valuePtr;
-      optionPopup.show(setting.nameId, setting.enumValues.data(), static_cast<int>(setting.enumValues.size()),
-                       currentValue, [this, valuePtr, sleepScreenChanged, quickResumeTimeoutChanged](int idx) {
-                         SETTINGS.*valuePtr = idx;
-                         syncQuickResumeTimeoutForSleepScreen(sleepScreenChanged, quickResumeTimeoutChanged);
-                         SETTINGS.saveToFile();
-                         rebuildSettingsLists();
-                         applyUiSettingChange(valuePtr);
-                       });
+      auto onSelect = [this, valuePtr, sleepScreenChanged, quickResumeTimeoutChanged](int idx) {
+        SETTINGS.*valuePtr = idx;
+        syncQuickResumeTimeoutForSleepScreen(sleepScreenChanged, quickResumeTimeoutChanged);
+        SETTINGS.saveToFile();
+        rebuildSettingsLists();
+        applyUiSettingChange(valuePtr);
+      };
+      if (!setting.enumStringValues.empty()) {
+        optionPopup.show(setting.nameId, setting.enumStringValues, currentValue, std::move(onSelect));
+      } else {
+        optionPopup.show(setting.nameId, setting.enumValues.data(), static_cast<int>(setting.enumValues.size()),
+                         currentValue, std::move(onSelect));
+      }
       requestUpdate();
       return;
     }
-    SETTINGS.*(setting.valuePtr) = (currentValue + 1) % static_cast<uint8_t>(setting.enumValues.size());
+    SETTINGS.*(setting.valuePtr) = (currentValue + 1) % static_cast<uint8_t>(optionCount);
   } else if (setting.type == SettingType::ENUM && setting.valueGetter && setting.valueSetter) {
     const uint8_t totalValues = setting.enumStringValues.empty()
                                     ? static_cast<uint8_t>(setting.enumValues.size())
@@ -440,6 +453,9 @@ std::string SettingsActivity::settingValueText(const SettingInfo& setting) {
     // Guard like the valueGetter branch below: a corrupt/migrated settings
     // byte must not index past the enum table.
     const uint8_t value = SETTINGS.*(setting.valuePtr);
+    if (!setting.enumStringValues.empty()) {
+      return value < setting.enumStringValues.size() ? setting.enumStringValues[value] : "";
+    }
     if (value >= setting.enumValues.size()) return "";
     return I18N.get(setting.enumValues[value]);
   }

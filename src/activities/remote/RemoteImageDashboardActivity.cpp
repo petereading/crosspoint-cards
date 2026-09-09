@@ -545,6 +545,9 @@ void RemoteImageDashboardActivity::startPowerLatch() {
   if (input.power < 0) return;
 
   remotePowerInterruptFired = 0;
+  // Bias the pin before arming the edge. An unbiased input floats, and a pin
+  // left floating next to a transmitting radio collects edges of its own.
+  pinMode(input.power, input.powerActiveHigh ? INPUT_PULLDOWN : INPUT_PULLUP);
   const int interruptMode = input.powerActiveHigh ? RISING : FALLING;
   attachInterrupt(digitalPinToInterrupt(input.power), remotePowerInterruptHandler, interruptMode);
   powerInterruptAttached = true;
@@ -560,8 +563,24 @@ void RemoteImageDashboardActivity::stopPowerLatch() {
 }
 
 bool RemoteImageDashboardActivity::powerLatchTriggered() {
-  if (remotePowerInterruptFired != 0) powerExitRequested = true;
-  return powerExitRequested;
+  if (powerExitRequested) return true;
+  if (remotePowerInterruptFired == 0) return false;
+
+  // Consume the edge and confirm it against the level. Leaving the card is a
+  // silent restart to the home screen, so a single stray edge used to end a
+  // sleeping card mid-cycle and drop the device at the main menu -- which then
+  // slept again on the ordinary timeout. A real press holds the pin; a glitch
+  // does not, so sample it a few times before believing it.
+  remotePowerInterruptFired = 0;
+  const auto& input = BoardConfig::ACTIVE.input;
+  if (input.power < 0) return false;
+  const int pressedLevel = input.powerActiveHigh ? HIGH : LOW;
+  for (int sample = 0; sample < 3; ++sample) {
+    if (digitalRead(input.power) != pressedLevel) return false;
+    delay(10);
+  }
+  powerExitRequested = true;
+  return true;
 }
 
 void RemoteImageDashboardActivity::returnToUser() {
