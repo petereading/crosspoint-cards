@@ -29,6 +29,10 @@ class CrossPointState : public PersistableStore<CrossPointState> {
   enum : uint8_t {
     DASHBOARD_NONE = 0,
     DASHBOARD_CARD_BASE = 1,
+    // One past the highest card mode. Kept in step with
+    // CrossPointSettings::LOCK_SCREEN_CARD_COUNT by a static_assert in
+    // RemoteImageDashboardActivity.h, the one place that sees both headers.
+    DASHBOARD_CARD_END = 7,
   };
   uint8_t activeDashboardMode = DASHBOARD_NONE;
   bool showBootScreen = true;

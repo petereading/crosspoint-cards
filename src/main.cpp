@@ -551,9 +551,13 @@ void setup() {
   // attributed to that pin without a verified hold dropped the device to the
   // home menu mid-cycle. Trusting the same verification the rest of the boot
   // path uses keeps a glitch on that pin from ending the mode.
+  //
+  // The mode now survives the wake in state.json, because the wake is a chip
+  // reset that clears RAM. A panic also ends the mode: its crash screen takes
+  // the routing below, so resuming would only leave a stale flag on disk.
   const bool userEndedCardMode = (wakeupReason == HalGPIO::WakeupReason::PowerButton && wakeHoldVerified) ||
                                  wakeupReason == HalGPIO::WakeupReason::AfterFlash ||
-                                 wakeupReason == HalGPIO::WakeupReason::AfterUSBPower;
+                                 wakeupReason == HalGPIO::WakeupReason::AfterUSBPower || rebootedFromPanic;
   uint8_t dashboardResume = CrossPointState::DASHBOARD_NONE;
   if (APP_STATE.activeDashboardMode != CrossPointState::DASHBOARD_NONE) {
     if (!userEndedCardMode) {

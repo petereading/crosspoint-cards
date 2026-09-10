@@ -7,6 +7,10 @@
 #include "activities/Activity.h"
 #include "network/HttpDownloader.h"
 
+static_assert(CrossPointState::DASHBOARD_CARD_BASE + CrossPointSettings::LOCK_SCREEN_CARD_COUNT ==
+                  CrossPointState::DASHBOARD_CARD_END,
+              "DASHBOARD_CARD_END must cover every card slot, or a valid mode is discarded on load");
+
 // Generic externally-rendered dashboard. The device only owns transport,
 // validation, display, and timed sleep; dashboard generation stays off-device.
 class RemoteImageDashboardActivity final : public Activity {

@@ -52,6 +52,10 @@ void CrossPointState::toJson(JsonDocument& doc) const {
   doc["recentOverlaySleepFill"] = recentOverlaySleepFill;
   doc["readerActivityLoadCount"] = readerActivityLoadCount;
   doc["lastSleepFromReader"] = lastSleepFromReader;
+  // A cycling card arms its wake with a deep sleep, and that wake is a chip
+  // reset: without this the mode is gone by the time boot looks for it, and
+  // the device lands on the home screen instead of the card.
+  doc["activeDashboardMode"] = activeDashboardMode;
   doc["showBootScreen"] = showBootScreen;
 }
 
@@ -89,6 +93,10 @@ bool CrossPointState::fromJson(JsonVariantConst doc) {
   }
   readerActivityLoadCount = doc["readerActivityLoadCount"] | static_cast<uint8_t>(0);
   lastSleepFromReader = doc["lastSleepFromReader"] | false;
+  activeDashboardMode = doc["activeDashboardMode"] | static_cast<uint8_t>(DASHBOARD_NONE);
+  // A slot removed since the file was written must not keep the device
+  // cycling a card that no longer exists.
+  if (activeDashboardMode >= DASHBOARD_CARD_END) activeDashboardMode = DASHBOARD_NONE;
   showBootScreen = doc["showBootScreen"] | true;
   return true;
 }
