@@ -1285,7 +1285,10 @@ function renderQuoteBmp(data, orientation, device) {
   drawTextCentered(canvas, "QUOTE", 25, 7);
   drawTextCentered(canvas, data.date, 88, 2);
   fillRect(canvas, 24, 120, WIDTH - 48, 3);
-  const top = 184;
+  // The quote hangs from just under the rule rather than floating in the middle
+  // of the space above the author: a short quote should leave its room at the
+  // bottom, not as a gap under the rule.
+  const top = 152;
   const span = 620 - top;
   const verse = fitVerse(data.quote, WIDTH - 60, span, [
     [4, 40],
@@ -1293,8 +1296,7 @@ function renderQuoteBmp(data, orientation, device) {
     [2, 23],
   ]);
   if (verse) {
-    drawVerseCentered(canvas, verse.lines, 30, top + Math.floor((span - verse.height) / 2), verse.scale, WIDTH - 60,
-                      verse.lineHeight);
+    drawVerseCentered(canvas, verse.lines, 30, top, verse.scale, WIDTH - 60, verse.lineHeight);
   } else {
     const scale = cleanText(data.quote).length > 150 ? 3 : 4;
     const lineHeight = scale === 4 ? 40 : 31;
