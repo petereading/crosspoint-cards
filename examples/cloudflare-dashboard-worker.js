@@ -236,6 +236,82 @@ function drawWrappedTextCentered(canvas, text, x, y, scale, width, maxLines, lin
   return lines.length;
 }
 
+// Wikiquote stores song lyrics and poems as <br>-separated lines. Flowed into
+// a paragraph they read as one breathless run-on, so lay the lines out as
+// written whenever they fit the space and only fall back to flowing when they
+// do not. A blank entry is a stanza break and costs one line.
+function verseLines(text) {
+  return String(text || "")
+    .split("\n")
+    .map((line) => cleanText(line));
+}
+
+function layoutVerse(lines, scale, width, maxLines) {
+  const out = [];
+  for (const line of lines) {
+    if (!line) {
+      if (out.length && out[out.length - 1] !== "") out.push("");
+      continue;
+    }
+    if (textWidth(line, scale) <= width) {
+      out.push(line);
+      continue;
+    }
+    for (const wrapped of wrapText(line, scale, width, maxLines)) out.push(wrapped);
+  }
+  while (out.length && out[out.length - 1] === "") out.pop();
+  return out.length > 1 && out.length <= maxLines ? out : null;
+}
+
+// A stanza break reads clearly at a little over half a line, and buys back the
+// room a full blank line would cost on a card this size.
+function verseGap(lineHeight) {
+  return Math.round(lineHeight * 0.55);
+}
+
+// Walks the block once, returning each drawable line with its y offset. A
+// blank entry is a stanza break and advances by the smaller gap.
+function verseRows(lines, lineHeight) {
+  const gap = verseGap(lineHeight);
+  const rows = [];
+  let offset = 0;
+  for (const line of lines) {
+    if (!line) {
+      offset += gap;
+      continue;
+    }
+    rows.push({ line, offset });
+    offset += lineHeight;
+  }
+  return rows;
+}
+
+// Glyphs are 7 rows tall before scaling, so the last line adds ink but no advance.
+function verseHeight(lines, scale, lineHeight) {
+  const rows = verseRows(lines, lineHeight);
+  return rows.length ? rows[rows.length - 1].offset + 7 * scale : 0;
+}
+
+function drawVerseCentered(canvas, lines, x, y, scale, width, lineHeight) {
+  for (const row of verseRows(lines, lineHeight)) {
+    drawText(canvas, row.line, x + Math.floor((width - textWidth(row.line, scale)) / 2), y + row.offset, scale);
+  }
+}
+
+// Picks the largest scale whose verse block fits the span, or null to flow.
+// The margin keeps the last line clear of the rule beneath it.
+function fitVerse(text, width, span, scales) {
+  const lines = verseLines(text);
+  if (lines.filter(Boolean).length < 2) return null;
+  for (const [scale, lineHeight] of scales) {
+    const laid = layoutVerse(lines, scale, width, Math.ceil(span / lineHeight) + 4);
+    if (!laid) continue;
+    const height = verseHeight(laid, scale, lineHeight);
+    if (height <= span - 16) return { lines: laid, scale, lineHeight, height };
+  }
+  return null;
+}
+
 function makeBmp(canvas) {
   const rowStride = (PIXEL_ROW_BYTES + 3) & ~3;
   const pixelBytes = rowStride * HEIGHT;
@@ -1128,12 +1204,20 @@ function stripWikiMarkup(value) {
   let text = String(value || "")
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<ref\b[\s\S]*?<\/ref>|<ref\b[^>]*\/>/gi, " ")
-    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
     .replace(/\[\[(?:[^\]|]+\|)?([^\]]+)\]\]/g, "$1")
     .replace(/\[https?:\/\/[^\s\]]+\s+([^\]]+)\]/g, "$1")
     .replace(/'{2,}/g, "");
   for (let pass = 0; pass < 3; pass++) text = text.replace(/\{\{[^{}]*\}\}/g, " ");
-  return decodeXmlText(text);
+  // decodeXmlText collapses every run of whitespace, newlines included, which is
+  // right for the prose cards that share it. Decode each verse line on its own
+  // so the line structure survives.
+  return text
+    .split("\n")
+    .map((line) => decodeXmlText(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 async function fetchWikiquote(now, timeZone) {
@@ -1176,9 +1260,23 @@ function renderQuoteBmp(data, orientation, device) {
     drawTextCentered(canvas, "QUOTE", compact ? 12 : 16, 6);
     drawTextCentered(canvas, data.date, compact ? 60 : 67, 2);
     fillRect(canvas, 20, compact ? 87 : 95, WIDTH - 40, 3);
-    const scale = cleanText(data.quote).length > 190 ? 2 : 3;
-    const lineHeight = scale === 3 ? 31 : 23;
-    drawWrappedTextCentered(canvas, data.quote, 42, compact ? 122 : 132, scale, WIDTH - 84, compact ? 7 : 8, lineHeight);
+    const top = compact ? 122 : 132;
+    const span = (compact ? 375 : 414) - top;
+    // Landscape has about two thirds of portrait's vertical room above the
+    // author line, so a long verse flows as a paragraph rather than being
+    // squeezed into an unreadable one.
+    const verse = fitVerse(data.quote, WIDTH - 84, span, [
+      [3, 31],
+      [2, 23],
+    ]);
+    if (verse) {
+      drawVerseCentered(canvas, verse.lines, 42, top + Math.floor((span - verse.height) / 2), verse.scale, WIDTH - 84,
+                        verse.lineHeight);
+    } else {
+      const scale = cleanText(data.quote).length > 190 ? 2 : 3;
+      const lineHeight = scale === 3 ? 31 : 23;
+      drawWrappedTextCentered(canvas, data.quote, 42, top, scale, WIDTH - 84, compact ? 7 : 8, lineHeight);
+    }
     drawTextCentered(canvas, data.author, compact ? 375 : 414, 4, WIDTH - 60);
     drawTextCentered(canvas, "WIKIQUOTE  CC BY-SA", HEIGHT - 18, 1);
     return makeBmp(canvas);
@@ -1187,9 +1285,21 @@ function renderQuoteBmp(data, orientation, device) {
   drawTextCentered(canvas, "QUOTE", 25, 7);
   drawTextCentered(canvas, data.date, 88, 2);
   fillRect(canvas, 24, 120, WIDTH - 48, 3);
-  const scale = cleanText(data.quote).length > 150 ? 3 : 4;
-  const lineHeight = scale === 4 ? 40 : 31;
-  drawWrappedTextCentered(canvas, data.quote, 30, 184, scale, WIDTH - 60, 10, lineHeight);
+  const top = 184;
+  const span = 620 - top;
+  const verse = fitVerse(data.quote, WIDTH - 60, span, [
+    [4, 40],
+    [3, 31],
+    [2, 23],
+  ]);
+  if (verse) {
+    drawVerseCentered(canvas, verse.lines, 30, top + Math.floor((span - verse.height) / 2), verse.scale, WIDTH - 60,
+                      verse.lineHeight);
+  } else {
+    const scale = cleanText(data.quote).length > 150 ? 3 : 4;
+    const lineHeight = scale === 4 ? 40 : 31;
+    drawWrappedTextCentered(canvas, data.quote, 30, top, scale, WIDTH - 60, 10, lineHeight);
+  }
   fillRect(canvas, 80, 620, WIDTH - 160, 2);
   drawTextCentered(canvas, data.author, 653, 4, WIDTH - 40);
   drawTextCentered(canvas, "WIKIQUOTE  CC BY-SA", HEIGHT - 19, 1);
