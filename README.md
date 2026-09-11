@@ -77,8 +77,8 @@ and says so in the footer when it does.
 **`/today.bmp`** — On this day, from Wikipedia's feed. `lang=en` selects the language edition, so a
 German or Japanese reader gets that edition's events rather than a translation.
 
-**`/quote.bmp`** — Wikiquote's quote of the day. Poems and lyrics keep their line breaks; prose
-flows to fill the card.
+**`/quote.bmp`** — Wikiquote's quote of the day. In portrait, poems and lyrics keep their line
+breaks; prose flows to fill the card. Landscape has less height, so a long verse flows too.
 
 **`/bitcoin.bmp`** — BTC/USD, the 24-hour change, and a seven-day line chart with its high and low.
 
@@ -89,9 +89,34 @@ JPL's Keplerian elements. No upstream service, so it cannot fail.
 (default), `whole` or `equal`; `orb=1..12` for the aspect orb. Pass `date` and `time` for a chart of
 some other moment rather than now. Also computed entirely on the Worker.
 
-> The renders above are the Worker's own output at the X3's 528×792. The clock, moon, solar and astro
-> cards show genuinely computed values; the weather and bitcoin figures are sample data, since those
-> cards read live services.
+#### The same eight in landscape
+
+Every card lays itself out again for a landscape panel rather than being rotated, so the wide shape
+is used rather than tolerated: the weather forecast becomes a row, the solar legend moves alongside
+the orbits, and the astro chart puts its positions table beside the wheel.
+
+<table>
+<tr>
+<td width="50%"><img src="./docs/images/cards/landscape/clock.png" alt="Clock card, landscape"></td>
+<td width="50%"><img src="./docs/images/cards/landscape/weather.png" alt="Weather card, landscape"></td>
+</tr>
+<tr>
+<td><img src="./docs/images/cards/landscape/moon.png" alt="Moon card, landscape"></td>
+<td><img src="./docs/images/cards/landscape/today.png" alt="Today in history card, landscape"></td>
+</tr>
+<tr>
+<td><img src="./docs/images/cards/landscape/quote.png" alt="Quote card, landscape"></td>
+<td><img src="./docs/images/cards/landscape/bitcoin.png" alt="Bitcoin card, landscape"></td>
+</tr>
+<tr>
+<td><img src="./docs/images/cards/landscape/solar.png" alt="Solar system card, landscape"></td>
+<td><img src="./docs/images/cards/landscape/astro.png" alt="Astro chart card, landscape"></td>
+</tr>
+</table>
+
+> The renders above are the Worker's own output, at the X3's 528×792 and 792×528. The clock, moon,
+> solar and astro cards show genuinely computed values; the weather and bitcoin figures are sample
+> data, since those cards read live services.
 
 Open the Worker's root URL for the full parameter list, and `/locations.txt` for the 81 location
 codes.
