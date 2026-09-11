@@ -63,8 +63,8 @@ Deploy it to your own account, then paste its URLs into the six slots.
 </tr>
 </table>
 
-**`/clock.bmp`** — Time, day and date, with the place underneath. Takes `location=HKG` or any IANA
-zone; see the note on `lead` and `round` below. The only card worth a one-minute interval.
+**`/clock.bmp`** — Time, day and date, with the place underneath. Takes `location=NYC` or any IANA
+zone, and resolves daylight saving for it; see the note on `lead` and `round` below. The only card worth a one-minute interval.
 
 **`/weather.bmp`** — Current conditions, feels-like, humidity, wind and rain chance, sunrise and
 sunset, then a five-day strip. `location=London,GB`, exact `lat`/`lon`, or `location=auto` to use the
