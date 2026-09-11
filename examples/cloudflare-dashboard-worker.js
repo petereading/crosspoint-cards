@@ -1486,11 +1486,13 @@ function renderSolarBmp(now, timeZone, orientation, device) {
     fillRect(canvas, 20, compact ? 82 : 90, WIDTH - 40, 3);
     drawSolarChart(canvas, planets, 255, compact ? 266 : 288, compact ? 166 : 188);
     drawTextCenteredInBox(canvas, "HELIOCENTRIC", 500, WIDTH - 520, compact ? 132 : 146, 4);
-    drawTextCenteredInBox(canvas, "ME MERCURY", 500, WIDTH - 520, compact ? 198 : 218, 2);
-    drawTextCenteredInBox(canvas, "VE VENUS", 500, WIDTH - 520, compact ? 228 : 251, 2);
-    drawTextCenteredInBox(canvas, "EA EARTH", 500, WIDTH - 520, compact ? 258 : 284, 2);
-    drawTextCenteredInBox(canvas, "MA MARS", 500, WIDTH - 520, compact ? 288 : 317, 2);
-    drawTextCenteredInBox(canvas, "JU SA UR NE", 500, WIDTH - 520, compact ? 330 : 359, 2);
+    // Every body named in full: the outer four used to share one line of bare
+    // abbreviations, so the reader could expand ME but not JU.
+    const key = ["ME MERCURY", "VE VENUS", "EA EARTH", "MA MARS", "JU JUPITER",
+                 "SA SATURN", "UR URANUS", "NE NEPTUNE", "PL PLUTO"];
+    key.forEach((entry, index) => {
+      drawTextCenteredInBox(canvas, entry, 500, WIDTH - 520, (compact ? 172 : 190) + index * (compact ? 28 : 30), 2);
+    });
     drawTextCentered(canvas, "POSITIONS JPL APPROXIMATION", HEIGHT - 18, 1);
     return makeBmp(canvas);
   }
@@ -1501,7 +1503,7 @@ function renderSolarBmp(now, timeZone, orientation, device) {
   drawSolarChart(canvas, planets, Math.floor(WIDTH / 2), 350, 210);
   drawTextCentered(canvas, "HELIOCENTRIC PLANET POSITIONS", 590, 3, WIDTH - 24);
   drawTextCentered(canvas, "ME MERCURY  VE VENUS  EA EARTH  MA MARS", 640, 1);
-  drawTextCentered(canvas, "JU JUPITER  SA SATURN  UR URANUS  NE NEPTUNE", 664, 1);
+  drawTextCentered(canvas, "JU JUPITER  SA SATURN  UR URANUS  NE NEPTUNE  PL PLUTO", 664, 1);
   drawTextCentered(canvas, "POSITIONS JPL APPROXIMATION", HEIGHT - 19, 1);
   return makeBmp(canvas);
 }
@@ -1728,9 +1730,14 @@ function renderAstroBmp(chart, orientation, device) {
   const canvas = new Uint8Array(PIXEL_ROW_BYTES * HEIGHT);
   const landscape = orientation === "landscape";
 
+  // Landscape stacks three header lines down to y=86, so the wheel takes the
+  // band between that and the bottom margin. Sizing it from HEIGHT alone drew
+  // it straight through the date line.
+  const landscapeTop = 96;
+  const landscapeBottom = HEIGHT - 8;
   const cx = landscape ? Math.floor(HEIGHT / 2) + 10 : Math.floor(WIDTH / 2);
-  const cy = landscape ? Math.floor(HEIGHT / 2) + 20 : 372;
-  const outer = landscape ? Math.floor(HEIGHT / 2) - 40 : 232;
+  const cy = landscape ? Math.floor((landscapeTop + landscapeBottom) / 2) : 372;
+  const outer = landscape ? Math.floor((landscapeBottom - landscapeTop) / 2) : 232;
   const signInner = Math.round(outer * 0.84);
   const houseInner = Math.round(outer * 0.62);
   const bodyRadius = Math.round(outer * 0.73);
@@ -1802,12 +1809,15 @@ function renderAstroBmp(chart, orientation, device) {
   // Positions table.
   const rows = chart.bodies.map((b) => `${b.name} ${formatPosition(b.longitude)} H${chart.houses[b.name]}`);
   if (landscape) {
+    // A two-digit house takes the widest row to 154px, which ran off the right
+    // edge from the old inset.
+    const tableX = WIDTH - 165;
     let y = 100;
     for (const row of rows) {
-      drawText(canvas, row, WIDTH - 150, y, 2);
+      drawText(canvas, row, tableX, y, 2);
       y += 26;
     }
-    drawText(canvas, chart.system, WIDTH - 150, y + 8, 1);
+    drawText(canvas, chart.system, tableX, y + 8, 1);
   } else {
     const top = cy + outer + 20;
     for (let i = 0; i < rows.length; i++) {
