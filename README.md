@@ -34,16 +34,64 @@ new one has been written successfully, so a failed refresh never leaves a blank 
 `examples/cloudflare-dashboard-worker.js` is a single-file Cloudflare Worker that renders the cards.
 Deploy it to your own account, then paste its URLs into the six slots.
 
-| Route | Shows |
-|---|---|
-| `/clock.bmp` | Time, date and place |
-| `/weather.bmp` | Current conditions and forecast |
-| `/moon.bmp` | Moon phase and upcoming phases |
-| `/today.bmp` | On this day, from Wikipedia |
-| `/quote.bmp` | Quote of the day, from Wikiquote |
-| `/bitcoin.bmp` | BTC/USD with a seven-day chart |
-| `/solar.bmp` | Heliocentric solar system |
-| `/astro.bmp` | Astrological chart |
+### The eight cards
+
+<table>
+<tr>
+<td width="25%"><img src="./docs/images/cards/clock.png" alt="Clock card"></td>
+<td width="25%"><img src="./docs/images/cards/weather.png" alt="Weather card"></td>
+<td width="25%"><img src="./docs/images/cards/moon.png" alt="Moon card"></td>
+<td width="25%"><img src="./docs/images/cards/today.png" alt="Today in history card"></td>
+</tr>
+<tr>
+<td align="center"><b>clock</b></td>
+<td align="center"><b>weather</b></td>
+<td align="center"><b>moon</b></td>
+<td align="center"><b>today</b></td>
+</tr>
+<tr>
+<td><img src="./docs/images/cards/quote.png" alt="Quote card"></td>
+<td><img src="./docs/images/cards/bitcoin.png" alt="Bitcoin card"></td>
+<td><img src="./docs/images/cards/solar.png" alt="Solar system card"></td>
+<td><img src="./docs/images/cards/astro.png" alt="Astro chart card"></td>
+</tr>
+<tr>
+<td align="center"><b>quote</b></td>
+<td align="center"><b>bitcoin</b></td>
+<td align="center"><b>solar</b></td>
+<td align="center"><b>astro</b></td>
+</tr>
+</table>
+
+**`/clock.bmp`** — Time, day and date, with the place underneath. Takes `location=HKG` or any IANA
+zone; see the note on `lead` and `round` below. The only card worth a one-minute interval.
+
+**`/weather.bmp`** — Current conditions, feels-like, humidity, wind and rain chance, sunrise and
+sunset, then a five-day strip. `location=London,GB`, exact `lat`/`lon`, or `location=auto` to use the
+Worker's guess from the request. `units=imperial` for °F and mph.
+
+**`/moon.bmp`** — Tonight's phase drawn to its real illuminated fraction, with the next four phases
+and their times. Falls back to its own computed phases if the US Naval Observatory is unreachable,
+and says so in the footer when it does.
+
+**`/today.bmp`** — On this day, from Wikipedia's feed. `lang=en` selects the language edition, so a
+German or Japanese reader gets that edition's events rather than a translation.
+
+**`/quote.bmp`** — Wikiquote's quote of the day. Poems and lyrics keep their line breaks; prose
+flows to fill the card.
+
+**`/bitcoin.bmp`** — BTC/USD, the 24-hour change, and a seven-day line chart with its high and low.
+
+**`/solar.bmp`** — The planets at their real heliocentric longitudes, computed on the Worker from
+JPL's Keplerian elements. No upstream service, so it cannot fail.
+
+**`/astro.bmp`** — A full astrological chart: planets, houses, and aspect lines. `houses=placidus`
+(default), `whole` or `equal`; `orb=1..12` for the aspect orb. Pass `date` and `time` for a chart of
+some other moment rather than now. Also computed entirely on the Worker.
+
+> The renders above are the Worker's own output at the X3's 528×792. The clock, moon, solar and astro
+> cards show genuinely computed values; the weather and bitcoin figures are sample data, since those
+> cards read live services.
 
 Open the Worker's root URL for the full parameter list, and `/locations.txt` for the 81 location
 codes.
