@@ -75,6 +75,11 @@ void SettingsActivity::rebuildSettingsLists() {
       controlsSettings.push_back(setting);
     } else if (setting.category == StrId::STR_CAT_SYSTEM) {
       systemSettings.push_back(setting);
+    } else if (setting.category == StrId::STR_LOCK_SCREENS) {
+      // Cards are grouped as URL + interval for the web page. Only the
+      // intervals belong in a device list: a card's URL is entered by opening
+      // the card, which is the only screen with a keyboard.
+      if (setting.type != SettingType::STRING) systemSettings.push_back(setting);
     }
   }
 

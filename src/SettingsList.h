@@ -29,7 +29,10 @@ inline SettingInfo buildCardIntervalSetting(StrId nameId, uint8_t CrossPointSett
   s.type = SettingType::ENUM;
   s.valuePtr = field;
   s.key = key;
-  s.category = StrId::STR_CAT_SYSTEM;
+  // Grouped with the URLs so the web page shows each card's two rows together.
+  // SettingsActivity pulls these back into the System tab, where the URLs
+  // cannot follow: a URL is entered by opening the card itself.
+  s.category = StrId::STR_LOCK_SCREENS;
   s.enumStringValues.reserve(CrossPointSettings::CARD_REFRESH_OPTION_COUNT);
   for (uint8_t i = 0; i < CrossPointSettings::CARD_REFRESH_OPTION_COUNT; ++i) {
     char label[16];
@@ -472,39 +475,38 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                             StrId::STR_CUSTOMISE_STATUS_BAR),
 
         // --- Lock-screen cards ---
-        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_1, &CrossPointSettings::lockScreenCard1RefreshInterval,
-                                 "lockScreenCard1RefreshInterval"),
-        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_2, &CrossPointSettings::lockScreenCard2RefreshInterval,
-                                 "lockScreenCard2RefreshInterval"),
-        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_3, &CrossPointSettings::lockScreenCard3RefreshInterval,
-                                 "lockScreenCard3RefreshInterval"),
-        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_4, &CrossPointSettings::lockScreenCard4RefreshInterval,
-                                 "lockScreenCard4RefreshInterval"),
-        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_5, &CrossPointSettings::lockScreenCard5RefreshInterval,
-                                 "lockScreenCard5RefreshInterval"),
-        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_6, &CrossPointSettings::lockScreenCard6RefreshInterval,
-                                 "lockScreenCard6RefreshInterval"),
-        // The card URLs are web/JSON only -- on the device they are entered by
-        // opening the card itself. The category keeps them out of the four
-        // device settings tabs.
+        // Each card is a URL and an interval, listed as a pair. The URLs are
+        // web/JSON only: on the device a URL is entered by opening the card.
         SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_1, SETTINGS.lockScreenCardUrl[0],
                             CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard1Url",
                             StrId::STR_LOCK_SCREENS),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_1_REFRESH,
+                                 &CrossPointSettings::lockScreenCard1RefreshInterval, "lockScreenCard1RefreshInterval"),
         SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_2, SETTINGS.lockScreenCardUrl[1],
                             CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard2Url",
                             StrId::STR_LOCK_SCREENS),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_2_REFRESH,
+                                 &CrossPointSettings::lockScreenCard2RefreshInterval, "lockScreenCard2RefreshInterval"),
         SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_3, SETTINGS.lockScreenCardUrl[2],
                             CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard3Url",
                             StrId::STR_LOCK_SCREENS),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_3_REFRESH,
+                                 &CrossPointSettings::lockScreenCard3RefreshInterval, "lockScreenCard3RefreshInterval"),
         SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_4, SETTINGS.lockScreenCardUrl[3],
                             CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard4Url",
                             StrId::STR_LOCK_SCREENS),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_4_REFRESH,
+                                 &CrossPointSettings::lockScreenCard4RefreshInterval, "lockScreenCard4RefreshInterval"),
         SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_5, SETTINGS.lockScreenCardUrl[4],
                             CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard5Url",
                             StrId::STR_LOCK_SCREENS),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_5_REFRESH,
+                                 &CrossPointSettings::lockScreenCard5RefreshInterval, "lockScreenCard5RefreshInterval"),
         SettingInfo::String(StrId::STR_LOCK_SCREEN_CARD_6, SETTINGS.lockScreenCardUrl[5],
                             CrossPointSettings::LOCK_SCREEN_CARD_URL_LEN, "lockScreenCard6Url",
                             StrId::STR_LOCK_SCREENS),
+        buildCardIntervalSetting(StrId::STR_LOCK_SCREEN_CARD_6_REFRESH,
+                                 &CrossPointSettings::lockScreenCard6RefreshInterval, "lockScreenCard6RefreshInterval"),
     };
     // Only show tilt page turn setting when the QMI8658 IMU is present (X3)
     if (halTiltSensor.isAvailable()) {
