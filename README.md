@@ -59,9 +59,53 @@ earlier, so `lead=90` renders that far ahead and the card is right *when it appe
 the displayed time to a coarser mark. Together they make a clock that reads correctly instead of
 always trailing the fetch.
 
-`device` and `orientation` set the bitmap size (`x3`/`x4`, `portrait`/`landscape`). Everything is
-computed inside the Worker — the astro chart and moon phases included — so no third-party API key is
-needed and no upstream service can take a card down.
+`device` and `orientation` set the bitmap size (`x3`/`x4`, `portrait`/`landscape`).
+
+No card needs an API key. The clock, solar system and astro chart are computed inside the Worker from
+first principles, so they work even when the internet is having a bad day. The rest read public,
+keyless services — Open-Meteo for weather, the US Naval Observatory for moon phases, Wikimedia for
+*On this day* and the quote, Coinbase for the BTC price — and a card is only as reliable as the
+service behind it. A failed refresh leaves the last good card on screen rather than a blank panel.
+
+## Deploying the Worker
+
+You need a free Cloudflare account. Nothing is paid, and no card details are asked for.
+
+```bash
+npm install -g wrangler
+wrangler login
+
+mkdir -p cards/src && cd cards
+cp /path/to/crosspoint-cards/examples/cloudflare-dashboard-worker.js src/index.js
+```
+
+Add a `wrangler.toml` next to it:
+
+```toml
+name = "cards"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+```
+
+Then:
+
+```bash
+wrangler deploy
+```
+
+Wrangler prints your URL — `https://cards.<your-subdomain>.workers.dev`. Open it in a browser: the
+root path lists every route and parameter. Add `/clock.bmp?device=x3` and you should get a bitmap.
+Those are the URLs to paste into the six card slots.
+
+If you prefer not to install anything, the Cloudflare dashboard works too: **Workers & Pages → Create
+→ Worker**, then paste the contents of `cloudflare-dashboard-worker.js` into the editor and deploy.
+It is one self-contained file with no dependencies, so there is nothing to build.
+
+A Worker on the free plan allows 100,000 requests a day. A device refreshing every 15 minutes uses
+about a hundred, so the limit is not something you will meet. Each card is rendered fresh on request
+and nothing is cached or stored, which is the right trade for a handful of your own devices; if you
+ever point a crowd at one Worker, add cache headers first, for the sake of the upstream services more
+than Cloudflare.
 
 ## Install
 

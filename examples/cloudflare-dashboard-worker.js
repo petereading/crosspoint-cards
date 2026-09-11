@@ -1110,7 +1110,7 @@ async function fetchWikipediaToday(language, now, timeZone) {
   const response = await fetch(endpoint, {
     headers: {
       accept: "application/json",
-      "user-agent": "CrossPointDashboard/1.0 (https://github.com/petereading/crosspoint-dashboard-experiments)",
+      "user-agent": "CrossPointDashboard/1.0 (https://github.com/petereading/crosspoint-cards)",
     },
     signal: upstreamSignal(),
   });
@@ -1153,7 +1153,7 @@ async function fetchWikiquote(now, timeZone) {
   const response = await fetch(apiUrl, {
     headers: {
       accept: "application/json",
-      "user-agent": "CrossPointDashboard/1.0 (https://github.com/petereading/crosspoint-dashboard-experiments)",
+      "user-agent": "CrossPointDashboard/1.0 (https://github.com/petereading/crosspoint-cards)",
     },
     signal: upstreamSignal(),
   });
