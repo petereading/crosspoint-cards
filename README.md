@@ -6,7 +6,7 @@ e-reader into an always-on e-ink card display, without giving up the reader.
 Everything CrossPoint does — EPUB rendering, dictionaries, OPDS, KOReader sync — still works. This
 fork adds one thing: **Cards**.
 
-![CrossPoint Reader running on Xteink device](./docs/images/cover.jpg)
+![An Xteink X3 showing the quote card](./docs/images/cards.jpg)
 
 ---
 
