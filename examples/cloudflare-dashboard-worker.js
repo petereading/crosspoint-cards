@@ -1454,13 +1454,18 @@ function drawCircleOutline(canvas, cx, cy, radius) {
 }
 
 function drawSolarChart(canvas, planets, cx, cy, radius) {
+  // Scale to whatever is actually outermost, orbit and current distance alike,
+  // so the chart fills the radius the caller reserved and never exceeds it.
+  // A constant tuned for Neptune put Pluto's orbit a seventh of the way past
+  // it, across the rule above the chart and the caption below.
+  const outermost = planets.reduce((furthest, planet) => Math.max(furthest, planet.a, planet.distance), 1);
   for (const planet of planets) {
-    drawCircleOutline(canvas, cx, cy, Math.max(8, Math.round(radius * Math.sqrt(planet.a / 30.1))));
+    drawCircleOutline(canvas, cx, cy, Math.max(8, Math.round(radius * Math.sqrt(planet.a / outermost))));
   }
   fillCircle(canvas, cx, cy, 8);
   for (const planet of planets) {
     const angle = Math.atan2(planet.y, planet.x);
-    const distance = radius * Math.sqrt(planet.distance / 30.1);
+    const distance = radius * Math.sqrt(planet.distance / outermost);
     const x = Math.round(cx + Math.cos(angle) * distance);
     const y = Math.round(cy - Math.sin(angle) * distance);
     fillCircle(canvas, x, y, planet.name === "EA" ? 6 : 4);
