@@ -186,9 +186,22 @@ Build from the **Actions** tab: *Build one board* → `gh_release` → download 
 it with the [CrossPoint web installer](https://crosspointreader.com). Tagged releases build every
 board through *Compile Release*.
 
-Then open the device's web interface (**Settings → System → WiFi**, then browse to its address) and
-paste your card URLs under **Cards**. Intervals live under **Settings → System** on the device or in
-the same web page.
+### Adding your cards
+
+Both routes reach the same six slots, but one is far less painful than the other.
+
+**From a browser.** On the device, **Settings → System → WiFi** connects it and shows its address.
+Browse to that address from a computer or phone and open **Settings**: the **Cards** section lists
+the six slots as pairs — *Card 1* for the URL, *Card 1 Refresh* for how often it updates. Paste,
+save, done. This is the way to set the device up.
+
+**On the device.** **Main Menu → Cards**, then pick a slot. An empty slot opens the on-screen
+keyboard straight away; a card that already has one re-prompts with **Change URL**. It works, and
+you can use it without a computer anywhere nearby — but a Worker URL runs to seventy-odd characters
+entered one button press at a time. Keep it for a small edit, like swapping a city code.
+
+Refresh intervals are also on the device under **Settings → System**, listed as *Card 1 Refresh*
+through *Card 6 Refresh*. Only the URLs need a browser, because only they need a keyboard.
 
 ## Status
 
