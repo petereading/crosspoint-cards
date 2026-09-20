@@ -19,7 +19,11 @@
 #include "FirmwareFlasher.h"
 
 namespace {
-constexpr char latestReleaseUrl[] = "https://api.github.com/repos/crosspoint-reader/crosspoint-reader/releases/latest";
+// This fork's own releases, not upstream's. Pointing at crosspoint-reader would
+// offer stock CrossPoint to a Cards user and flash away the feature: the check is
+// a plain string comparison against the release tag, so any upstream tag that is
+// not this exact version reads as an update.
+constexpr char latestReleaseUrl[] = "https://api.github.com/repos/petereading/crosspoint-cards/releases/latest";
 }  // namespace
 
 OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
