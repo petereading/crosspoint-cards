@@ -1,9 +1,17 @@
 name: Compile Release
 
-# Builds every board's release firmware on tag push, with the .bin named
-# exactly as OtaUpdater requests it from the GitHub release: plain
+# Builds every board's release firmware on tag push and publishes it to the
+# GitHub release for that tag.
+#
+# The .bin names are the ones OtaUpdater asks the release for: plain
 # firmware.bin for the C3 X4/X3 binary, firmware-<board>.bin for every other
-# board. Attach the artifacts' .bin files to the release as-is.
+# board. They are attached flat, because OTA reads release assets by exact
+# name -- a workflow artifact is not reachable that way, so publishing here is
+# what makes over-the-air updates work at all.
+#
+# The web installer needs bootloader.bin and partitions.bin alongside the
+# firmware, and those two are named identically for every board. They ship as
+# one zip per board rather than as loose files that would collide.
 
 on:
   push:
@@ -27,12 +35,16 @@ jobs:
         include:
           - pio_env: gh_release
             asset: firmware.bin
+            board: x3-x4
           - pio_env: sticky-gh_release
             asset: firmware-sticky.bin
+            board: sticky
           - pio_env: x4pro-gh_release
             asset: firmware-x4pro.bin
+            board: x4pro
           - pio_env: papermono-gh_release
             asset: firmware-papermono.bin
+            board: papermono
     steps:
       - uses: actions/checkout@v6
         with:
@@ -79,10 +91,50 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset }}
+          name: ${{ matrix.board }}
           path: |
             .pio/build/${{ matrix.pio_env }}/bootloader.bin
             .pio/build/${{ matrix.pio_env }}/${{ matrix.asset }}
             .pio/build/${{ matrix.pio_env }}/firmware.elf
             .pio/build/${{ matrix.pio_env }}/firmware.map
             .pio/build/${{ matrix.pio_env }}/partitions.bin
+          # Fail loudly. The default is to warn, which would publish a release
+          # quietly missing a file nobody notices until a flash fails.
+          if-no-files-found: error
+
+  publish-release:
+    # Only a tag push publishes. workflow_dispatch still builds, so a branch can
+    # be checked with the release toolchain without touching any release.
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Collect board artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Assemble release assets
+        run: |
+          set -euo pipefail
+          out="$PWD/release"
+          mkdir -p "$out"
+          for dir in artifacts/*/; do
+            board="$(basename "$dir")"
+            # Flat .bin: what OtaUpdater fetches, and all the SD updater needs.
+            cp "$dir"firmware*.bin "$out"/
+            # Per-board bundle for the web installer, which writes all three at
+            # fixed offsets. firmware.elf and firmware.map stay workflow-only --
+            # the elf runs to tens of megabytes and is for decoding crashes.
+            (cd "$dir" && zip -q -j "$out/webinstall-$board.zip" \
+               bootloader.bin partitions.bin firmware*.bin)
+          done
+          ls -l "$out"
+
+      - name: Publish to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          fail_on_unmatched_files: true
