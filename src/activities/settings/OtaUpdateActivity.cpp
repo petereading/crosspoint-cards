@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 #include <I18n.h>
+#include <Memory.h>
 #include <WiFi.h>
 
 #include "MappedInputManager.h"
@@ -75,13 +76,24 @@ void OtaUpdateActivity::onWifiSelectionComplete(const bool success) {
 void OtaUpdateActivity::onEnter() {
   Activity::onEnter();
 
-  // Turn on WiFi immediately
+  // Allocate before the radio comes up. WiFi.mode() takes a large bite of the
+  // heap, and this allocation is the first thing after it -- with -fno-exceptions
+  // a bare make_unique aborts the device on OOM instead of returning null, so on
+  // a busy heap opening this screen killed the reader outright.
+  auto wifiSelection = makeUniqueNoThrow<WifiSelectionActivity>(renderer, mappedInput);
+  if (!wifiSelection) {
+    LOG_ERR("OTA", "OOM: WifiSelectionActivity (%u free, %u block)", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+    failedDetail = tr(STR_MEMORY_ERROR);
+    state = FAILED;
+    requestUpdate();
+    return;
+  }
+
   LOG_DBG("OTA", "Turning on WiFi...");
   WiFi.mode(WIFI_STA);
 
-  // Launch WiFi selection subactivity
   LOG_DBG("OTA", "Launching WifiSelectionActivity...");
-  startActivityForResult(std::make_unique<WifiSelectionActivity>(renderer, mappedInput),
+  startActivityForResult(std::move(wifiSelection),
                          [this](const ActivityResult& result) { onWifiSelectionComplete(!result.isCancelled); });
 }
 
