@@ -9,9 +9,10 @@ name: Compile Release
 # name -- a workflow artifact is not reachable that way, so publishing here is
 # what makes over-the-air updates work at all.
 #
-# The web installer needs bootloader.bin and partitions.bin alongside the
-# firmware, and those two are named identically for every board. They ship as
-# one zip per board rather than as loose files that would collide.
+# Only the .bin is published. The web installer and the on-device SD updater
+# both write the application image over a device that already has a bootloader
+# and partition table, so neither needs bootloader.bin or partitions.bin. Those
+# stay as workflow artifacts for the rare case of provisioning a blank chip.
 
 on:
   push:
@@ -121,16 +122,11 @@ jobs:
           set -euo pipefail
           out="$PWD/release"
           mkdir -p "$out"
-          for dir in artifacts/*/; do
-            board="$(basename "$dir")"
-            # Flat .bin: what OtaUpdater fetches, and all the SD updater needs.
-            cp "$dir"firmware*.bin "$out"/
-            # Per-board bundle for the web installer, which writes all three at
-            # fixed offsets. firmware.elf and firmware.map stay workflow-only --
-            # the elf runs to tens of megabytes and is for decoding crashes.
-            (cd "$dir" && zip -q -j "$out/webinstall-$board.zip" \
-               bootloader.bin partitions.bin firmware*.bin)
-          done
+          # One .bin per board and nothing else: the name tells the reader which
+          # device it is for, and it is what OtaUpdater fetches by exact name.
+          # firmware.elf and firmware.map stay workflow-only -- the elf runs to
+          # tens of megabytes and exists for decoding crash addresses.
+          cp artifacts/*/firmware*.bin "$out"/
           ls -l "$out"
 
       - name: Publish to the release
