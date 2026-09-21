@@ -210,8 +210,14 @@ through *Card 6 Refresh*. Only the URLs need a browser, because only they need a
 
 ## Status
 
-Developed and tested on an **Xteink X3**. It builds for every board CrossPoint supports, but the
-timed sleep that drives the sleep-screen card is implemented for the ESP32-C3 boards (X3/X4); on
+**Only the Xteink X3 has ever run this**, because it is the only device I own.
+
+`firmware.bin` covers the X3 and X4, but it has only been flashed to an X3 — the X4 half is
+untested. `firmware-sticky.bin`, `firmware-x4pro.bin` and `firmware-papermono.bin` are built by CI
+and attached to every release, but nobody has flashed or booted them. Treat all three as unverified.
+If you try one, please say how it went, whether it works or not.
+
+The timed sleep that drives the sleep-screen card is implemented for the ESP32-C3 boards (X3/X4); on
 other boards a card sleeps on its timer without the power button armed as a second wake source.
 
 Known limitation, inherited from upstream and present in stock CrossPoint 1.6 on the same hardware:
