@@ -182,9 +182,14 @@ than Cloudflare.
 
 ## Install
 
-Build from the **Actions** tab: *Build one board* → `gh_release` → download `firmware.bin` and flash
-it with the [CrossPoint web installer](https://crosspointreader.com). Tagged releases build every
-board through *Compile Release*.
+Download `firmware.bin` from the [latest release](https://github.com/petereading/crosspoint-cards/releases/latest)
+and flash it with the [CrossPoint web installer](https://crosspointreader.com), or from the device
+itself via **Settings → System → SD Firmware Update** if you have no pogo-pin cable — copy the file
+to the SD card over the web interface, then pick it there.
+
+`firmware.bin` is the X3/X4 build; the other boards have their own `firmware-<board>.bin`. To build
+it yourself instead, the **Actions** tab has *Build one board* for a single environment, and
+*Compile Release* for all four.
 
 ### Adding your cards
 
