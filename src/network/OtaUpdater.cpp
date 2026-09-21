@@ -110,7 +110,25 @@ bool OtaUpdater::isUpdateNewer() const {
    */
   if (latestPatch != currentPatch) return latestPatch > currentPatch;
 
-  // If we reach here, it means all segments are equal.
+  // All three segments are equal -- which for this fork is the normal case, not
+  // the exception: every Cards release carries the same CrossPoint base version,
+  // and sscanf("%d.%d.%d") stops at the dash, so 1.6.0-cards.1.0 and
+  // 1.6.0-cards.1.1 both read as 1.6.0. Left here, no Cards release would ever
+  // be offered as an update. Order by the fork's own suffix instead.
+  {
+    static constexpr char CARDS_TAG[] = "-cards.";
+    const char* currentCards = strstr(currentVersion, CARDS_TAG);
+    const char* latestCards = strstr(latestVersion.c_str(), CARDS_TAG);
+    if (currentCards != nullptr && latestCards != nullptr) {
+      int currentForkMajor = 0, currentForkMinor = 0;
+      int latestForkMajor = 0, latestForkMinor = 0;
+      sscanf(currentCards + sizeof(CARDS_TAG) - 1, "%d.%d", &currentForkMajor, &currentForkMinor);
+      sscanf(latestCards + sizeof(CARDS_TAG) - 1, "%d.%d", &latestForkMajor, &latestForkMinor);
+      if (latestForkMajor != currentForkMajor) return latestForkMajor > currentForkMajor;
+      if (latestForkMinor != currentForkMinor) return latestForkMinor > currentForkMinor;
+    }
+  }
+
   // One final check, if we're on an RC build (contains "-rc"), we should consider the latest version as newer even if
   // the segments are equal, since RC builds are pre-release versions.
   if (strstr(currentVersion, "-rc") != nullptr) {
