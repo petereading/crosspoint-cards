@@ -763,8 +763,13 @@ void setup() {
       // With Short Power Button Press = Sleep, a single click wakes on any
       // device; otherwise the button must still be held (ghost-wake debounce).
       // Picco: plugging in USB pulses the wake line; power on, as stock does.
+      // A card cycle is exempt: this plain deep sleep has no RTC timer, so a
+      // glitch on the wake pin would stop the card refreshing until the next
+      // press. Falling through lets the card routing below refresh it and arm
+      // its timed sleep again, since an unverified wake does not end card mode.
       if (!wakeHoldVerified && SETTINGS.shortPwrBtn != CrossPointSettings::SHORT_PWRBTN::SLEEP &&
-          !(FREEINK_DEVICE_PICCO && gpio.isUsbConnected())) {
+          !(FREEINK_DEVICE_PICCO && gpio.isUsbConnected()) &&
+          APP_STATE.activeDashboardMode == CrossPointState::DASHBOARD_NONE) {
         LOG_DBG("MAIN", "Power-button wake not held through verification, sleeping");
         Storage.prepareForDeepSleep();
         powerManager.startDeepSleep(gpio);
