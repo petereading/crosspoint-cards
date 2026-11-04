@@ -4,7 +4,7 @@ A fork of [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-re
 e-reader into an always-on e-ink card display, without giving up the reader.
 
 Everything CrossPoint does — EPUB rendering, dictionaries, OPDS, KOReader sync — still works. This
-fork adds one thing: **Cards**.
+fork adds one thing: **Cards**. It is currently based on CrossPoint 2.0.0.
 
 ![An Xteink X3 showing the quote card](./docs/images/cards.jpg)
 
@@ -182,20 +182,23 @@ than Cloudflare.
 
 ## Install
 
-Download `firmware.bin` from the [latest release](https://github.com/petereading/crosspoint-cards/releases/latest)
-and flash it with the [CrossPoint web installer](https://crosspointreader.com), or from the device
-itself via **Settings → System → SD Firmware Update** if you have no pogo-pin cable — copy the file
-to the SD card over the web interface, then pick it there.
+Download `crosspoint-<version>-x3-x4.bin` from the
+[latest release](https://github.com/petereading/crosspoint-cards/releases/latest) and flash it with the
+[CrossPoint web installer](https://crosspointreader.com), or from the device itself via
+**Settings → System → SD Card Firmware Update** if you have no pogo-pin cable — copy the file to the
+SD card over the web interface, then pick it there.
 
-`firmware.bin` is the X3/X4 build; the other boards have their own `firmware-<board>.bin`. To build
-it yourself instead, the **Actions** tab has *Build one board* for a single environment, and
-*Compile Release* for all four.
+`crosspoint-<version>-x3-x4.bin` is the X3/X4 build; the other boards have their own
+`crosspoint-<version>-<board>.bin`, the names CrossPoint's own updater looks for. To build it yourself
+instead, the **Actions** tab has *Build one board* for a single environment, and *Compile Release*
+for every board once a release is published.
 
 ### Adding your cards
 
 Both routes reach the same six slots, but one is far less painful than the other.
 
-**From a browser.** On the device, **Settings → System → WiFi** connects it and shows its address.
+**From a browser.** On the device, **Settings → Connectivity → Wi-Fi Networks** connects it, and
+**File Transfer** on the home screen shows its address.
 Browse to that address from a computer or phone and open **Settings**: the **Cards** section lists
 the six slots as pairs — *Card 1* for the URL, *Card 1 Refresh* for how often it updates. Paste,
 save, done. This is the way to set the device up.
@@ -212,9 +215,9 @@ through *Card 6 Refresh*. Only the URLs need a browser, because only they need a
 
 **Only the Xteink X3 has ever run this**, because it is the only device I own.
 
-`firmware.bin` covers the X3 and X4, but it has only been flashed to an X3 — the X4 half is
-untested. `firmware-sticky.bin`, `firmware-x4pro.bin` and `firmware-papermono.bin` are built by CI
-and attached to every release, but nobody has flashed or booted them. Treat all three as unverified.
+The `x3-x4` build covers the X3 and X4, but it has only been flashed to an X3 — the X4 half is
+untested. The other boards' builds are produced by CI and attached to every release, but nobody has
+flashed or booted them. Treat them as unverified.
 If you try one, please say how it went, whether it works or not.
 
 The timed sleep that drives the sleep-screen card is implemented for the ESP32-C3 boards (X3/X4); on
@@ -223,6 +226,10 @@ other boards a card sleeps on its timer without the power button armed as a seco
 Known limitation, inherited from upstream and present in stock CrossPoint 1.6 on the same hardware:
 **downloading fonts** through Manage Fonts fails on the X3 with a memory error. The font list loads;
 the download does not. Copy fonts to the SD card instead.
+
+Upgrading from a 1.6-based Cards release: CrossPoint 2.0 took the stored value of the *Card* sleep
+screen for its own *Cover + Transparent* mode. If the device was set to *Card*, pick it again under
+**Settings → Display → Sleep Screen** after the update.
 
 ## Development
 

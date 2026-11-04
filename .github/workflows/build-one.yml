@@ -20,7 +20,11 @@ on:
           - default             # X4 / X3 development (LOG_LEVEL=2, serial logging)
           - sticky-gh_release
           - x4pro-gh_release
+          - x4c-gh_release
           - papermono-gh_release
+          - metalio_eink4-gh_release
+          - eego_a4-gh_release
+          - picco-gh_release
 
 permissions:
   contents: read
@@ -61,6 +65,14 @@ jobs:
           path: ~/.platformio
           key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
           restore-keys: pio-${{ runner.os }}-
+
+      - name: Pin pioarduino core inside the platform penv
+        run: |
+          set -euo pipefail
+          # Mirrors release.yml: envs with custom_sdkconfig run a nested
+          # `pio run` from ~/.platformio/penv, which must match the outer core.
+          pio pkg install -e "${{ inputs.pio_env }}"
+          uv pip install --python ~/.platformio/penv/bin/python "pioarduino==6.1.19"
 
       - name: Build CrossPoint
         run: pio run -e ${{ inputs.pio_env }} -j1
