@@ -198,6 +198,16 @@ bool CrossPointSettings::fromJson(JsonVariantConst doc) {
   };
   forEachBaseSetting(visit);
 
+  // Cards 1.x (CrossPoint 1.6 base) stored the Card sleep screen as 8, which
+  // CrossPoint 2.0 gave to Cover + Transparent. A file that has card slots but
+  // no 2.0-only key (pluginsEnabled, migrated just below) is a 1.x save. Read
+  // before that migration adds the key.
+  if (doc["pluginsEnabled"].isNull() && !doc["lockScreenCard1Url"].isNull() &&
+      sleepScreen == SLEEP_SCREEN_MODE::COVER_TRANSPARENT) {
+    sleepScreen = SLEEP_SCREEN_MODE::LOCK_SCREEN;
+    needsResave = true;
+  }
+
   // Plugin System did not exist in older settings files. Preserve the behavior
   // of users who already have SD plugins installed, while keeping the new
   // default disabled on clean installs.

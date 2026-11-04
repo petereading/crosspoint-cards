@@ -227,10 +227,6 @@ Known limitation, inherited from upstream and present in stock CrossPoint 1.6 on
 **downloading fonts** through Manage Fonts fails on the X3 with a memory error. The font list loads;
 the download does not. Copy fonts to the SD card instead.
 
-Upgrading from a 1.6-based Cards release: CrossPoint 2.0 took the stored value of the *Card* sleep
-screen for its own *Cover + Transparent* mode. If the device was set to *Card*, pick it again under
-**Settings → Display → Sleep Screen** after the update.
-
 ## Development
 
 See the upstream [contributing docs](./docs/contributing/README.md) — the build, formatting and
